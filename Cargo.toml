@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 bcrypt = "0.5"
+clap = "2.33"
