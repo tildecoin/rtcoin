@@ -19,6 +19,7 @@ pub struct User {
     created: chrono::DateTime<Utc>,
     pass: Vec<u8>,
     balance: f64,
+    messages: Vec<String>,
     last_login: chrono::DateTime<Utc>,
 }
 
@@ -49,6 +50,7 @@ impl User {
             created: Utc::now(),
             pass: pass,
             balance: 1000.0,
+            messages: Vec::new(),
             last_login: Utc::now(),
         }
     }
@@ -100,6 +102,8 @@ impl User {
 
         self.withdraw(amount)?;
         other.deposit(amount)?;
+
+        other.messages.push(msg.to_string());
         
         println!("A message to you, Rudy:\n\t{}", msg);
         eprintln!("More logic to be added");
@@ -145,9 +149,19 @@ mod tests {
         let mut user1 = User::new("Bob Bobson");
         let mut user2 = User::new("Foo Barrington");
 
-        user1.send(&mut user2, 100.0, "Henlo fren!");
+        user1.send(&mut user2, 100.0, "Henlo fren!")
+            .expect("Failed to send 100.0");
 
         assert_eq!(user1.balance(), 900.0);
         assert_eq!(user2.balance(), 1100.0);
+        assert_eq!(user2.messages[0], "Henlo fren!");
+
+        user1.send(&mut user2, 23.5, "Have some moar, fren!")
+            .expect("Failed to send 23.5");
+
+        assert_eq!(user1.balance(), 876.5);
+        assert_eq!(user2.balance(), 1123.5);
+        assert_eq!(user2.messages[0], "Henlo fren!");
+        assert_eq!(user2.messages[1], "Have some moar, fren!");
     }
 }
