@@ -22,8 +22,9 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(name: String) -> User {
+    pub fn new(name: &str) -> User {
         let pass: Vec<u8> = vec![0, 8];
+        let name = name.to_string();
         User {
             name,
             created: Utc::now(),
@@ -33,10 +34,16 @@ impl User {
         }
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn balance(&self) -> u32 {
         self.balance
     }
 
+    // Currently, just check if the deposit will
+    // overflow the u32 balance field.
     pub fn deposit(&mut self, dep: u32) -> Result<(), TcoinError> {
         if (u32::max_value() - self.balance) < dep {
             return Err(TcoinError::new("Deposit Overflow"));
@@ -46,6 +53,12 @@ impl User {
         Ok(())
     }
 
+    // Currently, just check if the withdrawal
+    // results in a negative balance. As I'm
+    // using unsigned ints, a negative balance
+    // isn't allowed. Plus, a currency simulation
+    // with negative balances could get a bit
+    // unwieldy.
     pub fn withdraw(&mut self, amt: u32) -> Result<(), TcoinError> {
         if self.balance < amt {
             return Err(TcoinError::new("Insufficient funds"));
@@ -55,6 +68,10 @@ impl User {
         Ok(())
     }
 
+    // The least functional of the stub methods.
+    // Checks for available balance and a deposit
+    // overflow, then just prints the message to
+    // stdout.
     pub fn send(&mut self, other: &mut User, amount: u32, msg: &str) -> Result<(), TcoinError> {
         if self.balance < amount {
             return Err(TcoinError::new("Insufficient funds"));
@@ -68,10 +85,17 @@ impl User {
     }
 }
 
+// There are no real tests yet. My immediate task is
+// to stub out some tests for the above methods on the
+// User type so coverage doesn't get away from me.
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn create_user() {
+        let user = User::new("Bob Bobson");
+        assert_eq!(user.name(), "Bob Bobson");
+        assert_eq!(user.balance(), 1000);
     }
 }
