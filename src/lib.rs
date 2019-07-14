@@ -50,7 +50,7 @@ impl User {
             created: Utc::now(),
             pass: pass,
             balance: 1000.0,
-            messages: Vec::new(),
+            messages: Vec::with_capacity(50),
             last_login: Utc::now(),
         }
     }
@@ -75,11 +75,9 @@ impl User {
     }
 
     // Currently, just check if the withdrawal
-    // results in a negative balance. As I'm
-    // using unsigned ints, a negative balance
-    // isn't allowed. Plus, a currency simulation
-    // with negative balances could get a bit
-    // unwieldy.
+    // results in a negative balance. A currency 
+    // simulation with negative balances could 
+    // get a bit unwieldy.
     pub fn withdraw(&mut self, amt: f64) -> Result<(), TcoinError> {
         if self.balance < amt {
             return Err(TcoinError::new("Insufficient funds"));
@@ -89,10 +87,10 @@ impl User {
         Ok(())
     }
 
-    // The least functional of the stub methods.
-    // Checks for available balance and a deposit
-    // overflow, then just prints the message to
-    // stdout.
+    // Acts as a wrapper for withdraw/deposit.
+    // Lets any errors with those bubble up,
+    // and appends the message to the associated
+    // User obj.
     pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), TcoinError> {
         if self.balance < amount {
             return Err(TcoinError::new("Insufficient funds"));
@@ -105,8 +103,8 @@ impl User {
 
         other.messages.push(msg.to_string());
         
+        // debug print :: remove later
         println!("A message to you, Rudy:\n\t{}", msg);
-        eprintln!("More logic to be added");
         Ok(())
     }
 }
