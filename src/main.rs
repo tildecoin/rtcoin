@@ -1,3 +1,5 @@
+use std::thread;
+
 #[macro_use]
 use clap::{crate_version, value_t};
 use clap::{Arg, App, SubCommand};
@@ -29,6 +31,13 @@ fn main() {
                     .about("Retrieve your rtcoin balance"))
         .get_matches();
 
+    let next = thread::spawn(move || {
+        next_step(args);
+    });
+    next.join();
+}
+
+fn next_step(args: clap::ArgMatches) {
     if args.is_present("messages") {
         let mut msg_num = value_t!(args, "messages", i32).unwrap_or(0);
         if msg_num < 0 || msg_num > i32::max_value() {
