@@ -1,5 +1,5 @@
 #[macro_use]
-use clap::crate_version;
+use clap::{crate_version, value_t};
 use clap::{Arg, App, SubCommand};
 
 fn main() {
@@ -30,8 +30,15 @@ fn main() {
         .get_matches();
 
     if args.is_present("messages") {
-        let msg_num = args.value_of("messages").unwrap_or("0");
-        let msg_num: u32 = msg_num.trim().parse().unwrap_or(0);
-        println!("Number of messages to display: {}", msg_num);
+        let mut msg_num = value_t!(args, "messages", i32).unwrap_or(0);
+        if msg_num < 0 || msg_num > i32::max_value() {
+            msg_num = 0;
+        }
+
+        if msg_num == 0 {
+            println!("Displaying ALL messages");
+        } else {
+            println!("Displaying {} most recent messages", msg_num);
+        }
     }
 }
