@@ -37,6 +37,11 @@ fn main() {
     next.join();
 }
 
+// TODO: Need to come up with some kind of authentication
+// system for users. And come up with a way to store and
+// retrieve coin balances. The original implementation used
+// flat files.
+
 fn next_step(args: clap::ArgMatches) {
     if args.is_present("messages") {
         let mut msg_num = value_t!(args, "messages", i32).unwrap_or(0);
