@@ -5,22 +5,30 @@ use clap::{crate_version, value_t};
 use clap::{Arg, App, SubCommand};
 
 fn main() {
+    print!("\n");
     let args = App::new("rtcoin")
         .version(crate_version!())
-        .author("Ben Morrison (gbmor) (based on tcoin by login000)")
+        .author("Ben Morrison (gbmor) :: based on tcoin, originally by login000")
         .about("Currency Simulation for the Tildeverse")
-        .arg(Arg::with_name("messages")
-             .short("m")
-             .long("messages")
-             .value_name("[n]")
-             .help("Displays all messages, or last N messages.")
-             .takes_value(true))
-        .arg(Arg::with_name("send")
-             .short("s")
-             .long("send")
-             .value_name("[username] [amount] [message]")
-             .help("Send rtcoin to another user.")
-             .takes_value(true))
+        .subcommand(SubCommand::with_name("messages")
+                    .about("Display all messages, or last N messages")
+                    .arg(Arg::with_name("n")
+                         .help("The number of messages to retrieve. Black or 0 means all.")
+                         .required(false)))
+        .subcommand(SubCommand::with_name("send")
+                    .about("Send tcoin to another user. Message is optional.")
+                    .arg(Arg::with_name("username")
+                         .help("User to whom you will send tcoin")
+                         .required(true)
+                         .index(1))
+                    .arg(Arg::with_name("amount")
+                         .help("Amount of tcoin to send")
+                         .required(true)
+                         .index(2))
+                    .arg(Arg::with_name("message")
+                         .help("Optional message to include. Please use quotations.")
+                         .required(false)
+                         .index(3)))
         .subcommand(SubCommand::with_name("on")
                     .about("Log in to rtcoin"))
         .subcommand(SubCommand::with_name("off")
@@ -34,7 +42,9 @@ fn main() {
     let next = thread::spawn(move || {
         next_step(args);
     });
-    next.join();
+    if let Err(err) = next.join() {
+        eprintln!("{:?}", err);
+    }
 }
 
 // TODO: Need to come up with some kind of authentication
@@ -43,16 +53,26 @@ fn main() {
 // flat files.
 
 fn next_step(args: clap::ArgMatches) {
-    if args.is_present("messages") {
-        let mut msg_num = value_t!(args, "messages", i32).unwrap_or(0);
-        if msg_num < 0 || msg_num > i32::max_value() {
-            msg_num = 0;
-        }
+    match args.subcommand() {
+        ("messages", Some(msg_args)) => handle_messages(msg_args),
+        ("send", Some(send_args)) => send_tcoin(send_args),
+        ("", None) => println!("No subcommand issued. Something's wrong."),
+        (&_, _) => println!("Something went wrong during argument parsing."),
+    }
+}
 
-        if msg_num == 0 {
+fn handle_messages(num: &clap::ArgMatches) {
+        let num = value_t!(num, "n", u32).unwrap_or(0);
+        if num == 0 {
             println!("Displaying ALL messages");
         } else {
-            println!("Displaying {} most recent messages", msg_num);
+            println!("Displaying {} most recent messages", num);
         }
-    }
+}
+
+fn send_tcoin(send_args: &clap::ArgMatches) {
+        let who = send_args.value_of("username").unwrap();
+        let hwat = send_args.value_of("amount").unwrap();
+        let msg = send_args.value_of("message").unwrap_or("");
+        println!("Sending tcoin:\n\tUser: {}\n\tAmount: {}\n\tMessage: {}", who, hwat, msg);
 }
