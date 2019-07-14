@@ -97,6 +97,9 @@ impl User {
         } else if std::f64::MAX - other.balance < amount {
             return Err(TcoinError::new("Deposit Overflow"));
         }
+
+        self.withdraw(amount)?;
+        other.deposit(amount)?;
         
         println!("A message to you, Rudy:\n\t{}", msg);
         eprintln!("More logic to be added");
@@ -104,17 +107,47 @@ impl User {
     }
 }
 
-// There are no real tests yet. My immediate task is
-// to stub out some tests for the above methods on the
-// User type so coverage doesn't get away from me.
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn create_user() {
+    fn create_user_check_name_and_balance() {
         let user = User::new("Bob Bobson");
+        
         assert_eq!(user.name(), "Bob Bobson");
         assert_eq!(user.balance(), 1000.0);
+    }
+
+    #[test]
+    fn deposit_test() {
+        let mut user = User::new("Bob Bobson");
+        
+        user.deposit(100.0)
+            .expect("Failed to deposit 100.0");
+
+        
+        assert_eq!(user.balance(), 1100.0);
+    }
+
+    #[test]
+    fn withdrawal_test() {
+        let mut user = User::new("Bob Bobson");
+        
+        user.withdraw(100.0)
+            .expect("Failed to withdraw 100.0");
+        
+        assert_eq!(user.balance(), 900.0);
+    }
+
+    #[test]
+    fn send_test() {
+        let mut user1 = User::new("Bob Bobson");
+        let mut user2 = User::new("Foo Barrington");
+
+        user1.send(&mut user2, 100.0, "Henlo fren!");
+
+        assert_eq!(user1.balance(), 900.0);
+        assert_eq!(user2.balance(), 1100.0);
     }
 }
