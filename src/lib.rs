@@ -55,8 +55,8 @@ impl User {
         }
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> String {
+        self.name.to_string()
     }
 
     pub fn balance(&self) -> f64 {
