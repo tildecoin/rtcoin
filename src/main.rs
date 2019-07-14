@@ -17,17 +17,23 @@ use clap::{Arg, App, SubCommand};
 fn main() {
     print!("\n");
     let args = App::new("rtcoin")
-        // this uses a macro to pull the version
-        // stated in Cargo.toml
+        // This uses a macro to pull the version
+        // stated in Cargo.toml, rather than having
+        // it hard-coded in source or something.
         .version(crate_version!())
         .author("Ben Morrison (gbmor) :: based on tcoin, originally by login000")
         .about("Currency Simulation for the Tildeverse")
+
+        // The number of messages to pull. Needs
+        // a bit more work before this stub will
+        // be API compatible with tcoin.
         .subcommand(SubCommand::with_name("messages")
                     .about("Display all messages, or last N messages")
                     // if 0 or called but unset, list all messages
                     .arg(Arg::with_name("n")
                          .help("The number of messages to retrieve. Black or 0 means all.")
                          .required(false)))
+        
         // For the 'send' subcommand, every field is
         // its own argument. The only optional field
         // is the third: message.
@@ -45,6 +51,7 @@ fn main() {
                          .help("Optional message to include. Please use quotations.")
                          .required(false)
                          .index(3)))
+        
         // The "on"/"off" functionality present
         // in the tcoin API doesn't sit well with
         // me. I'm going to come up with an
@@ -57,6 +64,7 @@ fn main() {
                     .about("Log out of rtcoin"))
         .subcommand(SubCommand::with_name("init")
                     .about("Initialize your rtcoin wallet"))
+        
         // Balance *should* be the default action,
         // I think. If init has happened. Else, the
         // default action should be to init.
