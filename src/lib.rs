@@ -120,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn deposit_test() {
+    fn deposit() {
         let mut user = User::new("Bob Bobson");
         
         user.deposit(100.0)
@@ -131,7 +131,7 @@ mod tests {
     }
 
     #[test]
-    fn withdrawal_test() {
+    fn withdrawal() {
         let mut user = User::new("Bob Bobson");
         
         user.withdraw(100.0)
@@ -141,7 +141,7 @@ mod tests {
     }
 
     #[test]
-    fn send_test() {
+    fn send() {
         let mut user1 = User::new("Bob Bobson");
         let mut user2 = User::new("Foo Barrington");
 
