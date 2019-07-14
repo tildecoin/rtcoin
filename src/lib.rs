@@ -3,6 +3,7 @@
 // See LICENSE file for detailed license information.
 //
 
+use std::fmt;
 use chrono::prelude::*;
 
 // Locals Only
@@ -17,8 +18,26 @@ pub struct User {
     name: String,
     created: chrono::DateTime<Utc>,
     pass: Vec<u8>,
-    balance: u32,
+    balance: f64,
     last_login: chrono::DateTime<Utc>,
+}
+
+// The std::fmt::Display trait, so a User
+// can be passed to a print!() macro. Will
+// be formatted like so:
+//  Name: Bob Bobson
+//  Balance: 1000 tcoin
+//  Last Login: chrono::DateTime<Utc>
+//  Account Age: chrono::OldDuration
+impl fmt::Display for User {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let since = Utc::now().signed_duration_since(self.created);
+        write!(f, " Name: {}\n Balance: {} tcoin\n Last Login: {}\n Account Age: {}", 
+               self.name, 
+               self.balance, 
+               self.last_login.to_string(),
+               since.to_string())
+    }
 }
 
 impl User {
@@ -29,7 +48,7 @@ impl User {
             name,
             created: Utc::now(),
             pass: pass,
-            balance: 1000,
+            balance: 1000.0,
             last_login: Utc::now(),
         }
     }
@@ -38,14 +57,14 @@ impl User {
         &self.name
     }
 
-    pub fn balance(&self) -> u32 {
+    pub fn balance(&self) -> f64 {
         self.balance
     }
 
     // Currently, just check if the deposit will
     // overflow the u32 balance field.
-    pub fn deposit(&mut self, dep: u32) -> Result<(), TcoinError> {
-        if (u32::max_value() - self.balance) < dep {
+    pub fn deposit(&mut self, dep: f64) -> Result<(), TcoinError> {
+        if (std::f64::MAX - self.balance) < dep {
             return Err(TcoinError::new("Deposit Overflow"));
         }
 
@@ -59,7 +78,7 @@ impl User {
     // isn't allowed. Plus, a currency simulation
     // with negative balances could get a bit
     // unwieldy.
-    pub fn withdraw(&mut self, amt: u32) -> Result<(), TcoinError> {
+    pub fn withdraw(&mut self, amt: f64) -> Result<(), TcoinError> {
         if self.balance < amt {
             return Err(TcoinError::new("Insufficient funds"));
         }
@@ -72,10 +91,10 @@ impl User {
     // Checks for available balance and a deposit
     // overflow, then just prints the message to
     // stdout.
-    pub fn send(&mut self, other: &mut User, amount: u32, msg: &str) -> Result<(), TcoinError> {
+    pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), TcoinError> {
         if self.balance < amount {
             return Err(TcoinError::new("Insufficient funds"));
-        } else if u32::max_value() - other.balance < amount {
+        } else if std::f64::MAX - other.balance < amount {
             return Err(TcoinError::new("Deposit Overflow"));
         }
         
@@ -96,6 +115,6 @@ mod tests {
     fn create_user() {
         let user = User::new("Bob Bobson");
         assert_eq!(user.name(), "Bob Bobson");
-        assert_eq!(user.balance(), 1000);
+        assert_eq!(user.balance(), 1000.0);
     }
 }
