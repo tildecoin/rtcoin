@@ -31,7 +31,7 @@ fn main() {
                     .about("Display all messages, or last N messages")
                     // if 0 or called but unset, list all messages
                     .arg(Arg::with_name("n")
-                         .help("The number of messages to retrieve. Black or 0 means all.")
+                         .help("The number of messages to retrieve. Blank or 0 means all.")
                          .required(false)))
         
         // For the 'send' subcommand, every field is
