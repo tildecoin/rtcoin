@@ -7,7 +7,8 @@ use std::error::Error;
 use std::fmt;
 
 // The following struct and its three implementation
-// blocks are for a local error type. Just some boilerplate.
+// blocks are for a local error type. This allows the
+// return of Result<T, TcoinError> to signal a failure.
 #[derive(Debug)]
 pub struct TcoinError {
     details: String,
