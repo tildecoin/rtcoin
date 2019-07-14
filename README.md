@@ -1,4 +1,4 @@
-# rtcoin
+# rtcoin [![Build Status](https://travis-ci.com/gbmor/rtcoin.svg?branch=master)](https://travis-ci.com/gbmor/rtcoin)
 
 This is a work in progress
 
