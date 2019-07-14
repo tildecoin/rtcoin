@@ -1,0 +1,18 @@
+language: rust
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+os: 
+  - linux
+  - osx
+
+dist: xenial
+
+script: 
+  - cargo test --verbose
+  - cargo build --verbose
+  - cargo clean
+  - cargo build --release
