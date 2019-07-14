@@ -1,8 +1,10 @@
+#[macro_use]
+use clap::crate_version;
 use clap::{Arg, App, SubCommand};
 
 fn main() {
     let args = App::new("rtcoin")
-        .version("0.1.0")
+        .version(crate_version!())
         .author("Ben Morrison (gbmor) (based on tcoin by login000)")
         .about("Currency Simulation for the Tildeverse")
         .arg(Arg::with_name("messages")
