@@ -1,10 +1,10 @@
-// 
+//
 // rtcoin - Copyright (c) 2019 Ben Morrison (gbmor)
 // See LICENSE file for detailed license information.
 //
 
-use std::fmt;
 use chrono::prelude::*;
+use std::fmt;
 
 // Locals Only
 mod error;
@@ -33,11 +33,14 @@ pub struct User {
 impl fmt::Display for User {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let since = Utc::now().signed_duration_since(self.created);
-        write!(f, " Name: {}\n Balance: {} tcoin\n Last Login: {}\n Account Age: {}", 
-               self.name, 
-               self.balance, 
-               self.last_login.to_string(),
-               since.to_string())
+        write!(
+            f,
+            " Name: {}\n Balance: {} tcoin\n Last Login: {}\n Account Age: {}",
+            self.name,
+            self.balance,
+            self.last_login.to_string(),
+            since.to_string()
+        )
     }
 }
 
@@ -48,9 +51,9 @@ impl User {
         User {
             name,
             created: Utc::now(),
-            pass: pass,
+            pass,
             balance: 1000.0,
-            messages: Vec::with_capacity(50),
+            messages: Vec::with_capacity(10),
             last_login: Utc::now(),
         }
     }
@@ -75,8 +78,8 @@ impl User {
     }
 
     // Currently, just check if the withdrawal
-    // results in a negative balance. A currency 
-    // simulation with negative balances could 
+    // results in a negative balance. A currency
+    // simulation with negative balances could
     // get a bit unwieldy.
     pub fn withdraw(&mut self, amt: f64) -> Result<(), TcoinError> {
         if self.balance < amt {
@@ -102,7 +105,7 @@ impl User {
         other.deposit(amount)?;
 
         other.messages.push(msg.to_string());
-        
+
         // debug print :: remove later
         println!("A message to you, Rudy:\n\t{}", msg);
         Ok(())
@@ -116,7 +119,7 @@ mod tests {
     #[test]
     fn create_user_check_name_and_balance() {
         let user = User::new("Bob Bobson");
-        
+
         assert_eq!(user.name(), "Bob Bobson");
         assert_eq!(user.balance(), 1000.0);
     }
@@ -124,21 +127,18 @@ mod tests {
     #[test]
     fn deposit() {
         let mut user = User::new("Bob Bobson");
-        
-        user.deposit(100.0)
-            .expect("Failed to deposit 100.0");
 
-        
+        user.deposit(100.0).expect("Failed to deposit 100.0");
+
         assert_eq!(user.balance(), 1100.0);
     }
 
     #[test]
     fn withdrawal() {
         let mut user = User::new("Bob Bobson");
-        
-        user.withdraw(100.0)
-            .expect("Failed to withdraw 100.0");
-        
+
+        user.withdraw(100.0).expect("Failed to withdraw 100.0");
+
         assert_eq!(user.balance(), 900.0);
     }
 
@@ -147,14 +147,16 @@ mod tests {
         let mut user1 = User::new("Bob Bobson");
         let mut user2 = User::new("Foo Barrington");
 
-        user1.send(&mut user2, 100.0, "Henlo fren!")
+        user1
+            .send(&mut user2, 100.0, "Henlo fren!")
             .expect("Failed to send 100.0");
 
         assert_eq!(user1.balance(), 900.0);
         assert_eq!(user2.balance(), 1100.0);
         assert_eq!(user2.messages[0], "Henlo fren!");
 
-        user1.send(&mut user2, 23.5, "Have some moar, fren!")
+        user1
+            .send(&mut user2, 23.5, "Have some moar, fren!")
             .expect("Failed to send 23.5");
 
         assert_eq!(user1.balance(), 876.5);
