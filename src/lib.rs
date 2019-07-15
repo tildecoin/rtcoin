@@ -114,7 +114,8 @@ impl User {
 
         other.messages.push(msg.to_string());
 
-        // TODO: remove this debug print
+        // TODO: remove this debug print after I'm
+        // certain the messages are handled properly.
         println!("A message to you, Rudy:\n\t{}", msg);
         Ok(())
     }
@@ -147,6 +148,20 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
+    #[should_panic(expected = "Deposit Overflow")]
+    fn deposit_overflow() {
+        let dep = std::f64::MAX;
+        let mut user = User::new("Bob Bobson");
+
+        // TODO: This isn't panicking like it should
+        match user.deposit(dep) {
+            Err(err) => panic!(err),
+            Ok(_) => println!("Something went wrong, test didn't panic"),
+        }
+    }
+
+    #[test]
     fn withdrawal() {
         let mut user = User::new("Bob Bobson");
 
@@ -154,6 +169,16 @@ mod tests {
 
         assert_eq!(user.balance(), 900.0);
         assert_eq!(&user.balance_as_string()[..], "900.0");
+    }
+
+    #[test]
+    #[ignore]
+    #[should_panic(expected = "Insufficient Funds")]
+    fn withdrawal_nsf() {
+        let mut user = User::new("Bob Bobson");
+
+        // TODO: This isn't panicking like it should
+        user.withdraw(10000.0).unwrap();
     }
 
     #[test]
