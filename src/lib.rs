@@ -4,6 +4,7 @@
 //
 
 use chrono::prelude::*;
+use ryu;
 use std::fmt;
 
 // Locals Only
@@ -27,7 +28,7 @@ pub struct User {
 // can be passed to a print!() macro. Will
 // be formatted like so:
 //  Name: Bob Bobson
-//  Balance: 1000 tcoin
+//  Balance: 1000.0 tcoin
 //  Last Login: chrono::DateTime<Utc>
 //  Account Age: chrono::OldDuration
 impl fmt::Display for User {
@@ -36,8 +37,8 @@ impl fmt::Display for User {
         write!(
             f,
             " Name: {}\n Balance: {} tcoin\n Last Login: {}\n Account Age: {}",
-            self.name,
-            self.balance,
+            self.name(),
+            self.balance_as_string(),
             self.last_login.to_string(),
             since.to_string()
         )
@@ -48,13 +49,14 @@ impl User {
     pub fn new(name: &str) -> User {
         let pass: Vec<u8> = vec![0, 8];
         let name = name.to_string();
+        let now = Utc::now();
         User {
             name,
-            created: Utc::now(),
+            created: now,
             pass,
             balance: 1000.0,
             messages: Vec::with_capacity(10),
-            last_login: Utc::now(),
+            last_login: now,
         }
     }
 
@@ -66,8 +68,16 @@ impl User {
         self.balance
     }
 
-    // Currently, just check if the deposit will
-    // overflow the u32 balance field.
+    // User.balance_as_string() uses the Ryu library
+    // to format its output. It is significantly faster
+    // than the stdlib implementation of converting an
+    // f64 to a string.
+    pub fn balance_as_string(&self) -> String {
+        let mut buf = ryu::Buffer::new();
+        buf.format(self.balance).to_string() // &str -> String
+    }
+
+    // Check if the deposit will overflow the f64 balance field.
     pub fn deposit(&mut self, dep: f64) -> Result<(), TcoinError> {
         if (std::f64::MAX - self.balance) < dep {
             return Err(TcoinError::new("Deposit Overflow"));
@@ -77,10 +87,9 @@ impl User {
         Ok(())
     }
 
-    // Currently, just check if the withdrawal
-    // results in a negative balance. A currency
-    // simulation with negative balances could
-    // get a bit unwieldy.
+    // Check if the withdrawal results in a negative balance.
+    // A currency simulation with negative balances could get 
+    // a bit unwieldy.
     pub fn withdraw(&mut self, amt: f64) -> Result<(), TcoinError> {
         if self.balance < amt {
             return Err(TcoinError::new("Insufficient funds"));
@@ -90,10 +99,9 @@ impl User {
         Ok(())
     }
 
-    // Acts as a wrapper for withdraw/deposit.
-    // Lets any errors with those bubble up,
-    // and appends the message to the associated
-    // User obj.
+    // Acts as a wrapper for withdraw/deposit. Lets any errors 
+    // with those bubble up, and appends the message to the 
+    // associated User obj.
     pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), TcoinError> {
         if self.balance < amount {
             return Err(TcoinError::new("Insufficient funds"));
@@ -106,7 +114,7 @@ impl User {
 
         other.messages.push(msg.to_string());
 
-        // debug print :: remove later
+        // TODO: remove this debug print
         println!("A message to you, Rudy:\n\t{}", msg);
         Ok(())
     }
@@ -122,6 +130,10 @@ mod tests {
 
         assert_eq!(user.name(), "Bob Bobson");
         assert_eq!(user.balance(), 1000.0);
+
+        let bal_str = user.balance_as_string();
+
+        assert_eq!(&bal_str[..], "1000.0");
     }
 
     #[test]
@@ -131,6 +143,7 @@ mod tests {
         user.deposit(100.0).expect("Failed to deposit 100.0");
 
         assert_eq!(user.balance(), 1100.0);
+        assert_eq!(&user.balance_as_string()[..], "1100.0");
     }
 
     #[test]
@@ -140,6 +153,7 @@ mod tests {
         user.withdraw(100.0).expect("Failed to withdraw 100.0");
 
         assert_eq!(user.balance(), 900.0);
+        assert_eq!(&user.balance_as_string()[..], "900.0");
     }
 
     #[test]
