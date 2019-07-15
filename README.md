@@ -3,6 +3,8 @@
 `tcoin` implementation in Rust.
 [`login000/tcoin`](https://github.com/login000/tcoin)
 is a fun currency simulation originally written for [tilde.town](https://tilde.town).
+`rtcoin` is meant to improve upon and extend the original `tcoin`. Expect `rtcoin` to deviate
+in many ways while keeping the spirit of the original implementation.
 
 This is a work in progress. Follow/contribute using the [trello board](https://trello.com/b/WaOrNJHq/rtcoin).
 
