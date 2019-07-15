@@ -33,3 +33,14 @@ impl Error for TcoinError {
         &self.details
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn errors() {
+        let err = TcoinError::new("some error");
+        assert_eq!(err.description(), "some error");
+    }
+}
