@@ -1,11 +1,17 @@
-# rtcoin [![Build Status](https://travis-ci.com/gbmor/rtcoin.svg?branch=master)](https://travis-ci.com/gbmor/rtcoin) [![codecov](https://codecov.io/gh/gbmor/rtcoin/branch/master/graph/badge.svg)](https://codecov.io/gh/gbmor/rtcoin) [![Trello Board](https://img.shields.io/badge/trello-board-blue.svg)](https://trello.com/b/WaOrNJHq/rtcoin)
+# rtcoin [![Build Status](https://travis-ci.com/tildecoin/rtcoin.svg?branch=master)](https://travis-ci.com/tildecoin/rtcoin) [![codecov](https://codecov.io/gh/tildecoin/rtcoin/branch/master/graph/badge.svg)](https://codecov.io/gh/tildecoin/rtcoin)
 
-`tcoin` implementation in Rust.
-[`login000/tcoin`](https://github.com/login000/tcoin)
-is a fun currency simulation originally written for [tilde.town](https://tilde.town).
-`rtcoin` is meant to improve upon and extend the original `tcoin`. Expect `rtcoin` to deviate
-in many ways while keeping the spirit of the original implementation.
+`tildecoin` is a fun currency simulation concept originally written for the [tildeverse](https://tildeverse.org).
+`rtcoin` is the second-generation implementation, meant to extend and improve upon
+the first. In addition, the specifications set forth in the
+draft RFC for `tildecoin`, written by [~aewens](https://github.com/aewens), will be followed.
+* [tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md](https://tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md)
 
-This is a work in progress. Follow/contribute using the [trello board](https://trello.com/b/WaOrNJHq/rtcoin).
+This project is in early development. 
 
-Using Rust `nightly >= 1.38`, however, travis builds include `stable` and `beta`.
+### Notes
+
+* The first tildecoin implementation: [`github.com/login000/tcoin`](https://github.com/login000/tcoin)
+* Using Rust `nightly >= 1.38` for development, however, travis builds include `stable` and `beta`.
+* MIT Licensed
+* Contributions welcome!
+* Have a wonderful day :)
