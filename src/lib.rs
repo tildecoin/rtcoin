@@ -78,9 +78,12 @@ impl User {
     }
 
     // Check if the deposit will overflow the f64 balance field.
+    // Then make sure the deposit is positive.
     pub fn deposit(&mut self, dep: f64) -> Result<(), TcoinError> {
         if (std::f64::MAX - self.balance) < dep {
             return Err(TcoinError::new("Deposit Overflow"));
+        } else if dep < 0.0 {
+            return Err(TcoinError::new("Negative Deposit"));
         }
 
         self.balance += dep;
@@ -90,9 +93,12 @@ impl User {
     // Check if the withdrawal results in a negative balance.
     // A currency simulation with negative balances could get 
     // a bit unwieldy.
+    // Also make sure we're withdrawing a positive number.
     pub fn withdraw(&mut self, amt: f64) -> Result<(), TcoinError> {
         if self.balance < amt {
             return Err(TcoinError::new("Insufficient funds"));
+        } else if amt < 0.0 {
+            return Err(TcoinError::new("Negative Withdrawal"));
         }
 
         self.balance -= amt;
@@ -103,12 +109,6 @@ impl User {
     // with those bubble up, and appends the message to the 
     // associated User obj.
     pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), TcoinError> {
-        if self.balance < amount {
-            return Err(TcoinError::new("Insufficient funds"));
-        } else if std::f64::MAX - other.balance < amount {
-            return Err(TcoinError::new("Deposit Overflow"));
-        }
-
         self.withdraw(amount)?;
         other.deposit(amount)?;
 
