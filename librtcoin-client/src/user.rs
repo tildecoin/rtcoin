@@ -57,7 +57,7 @@ impl User {
     }
 
     pub fn name(&self) -> String {
-        self.name.to_string()
+        self.name.clone()
     }
 
     pub fn balance(&self) -> f64 {
@@ -73,11 +73,10 @@ impl User {
         buf.format(self.balance).to_string() // &str -> String
     }
 
-    // Check if the deposit will overflow the f64 balance field.
-    // Then make sure the deposit is positive.
-    pub fn deposit(&mut self, dep: f64) -> Result<(), String> {
+    // Make sure the deposit is positive.
+    pub fn deposit(&mut self, dep: f64) -> Result<(), &'static str> {
         if dep < 0.0 {
-            return Err(String::from("Negative Deposit"));
+            return Err("Negative Deposit");
         }
 
         self.balance += dep;
@@ -88,11 +87,11 @@ impl User {
     // A currency simulation with negative balances could get 
     // a bit unwieldy.
     // Also make sure we're withdrawing a positive number.
-    pub fn withdraw(&mut self, amt: f64) -> Result<(), String> {
+    pub fn withdraw(&mut self, amt: f64) -> Result<(), &'static str> {
         if self.balance < amt {
-            return Err(String::from("Insufficient funds"));
+            return Err("Insufficient funds");
         } else if amt < 0.0 {
-            return Err(String::from("Negative Withdrawal"));
+            return Err("Negative Withdrawal");
         }
 
         self.balance -= amt;
@@ -102,7 +101,7 @@ impl User {
     // Acts as a wrapper for withdraw/deposit. Lets any errors 
     // with those bubble up, and appends the message to the 
     // associated User obj.
-    pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), String> {
+    pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), &'static str> {
         self.withdraw(amount)?;
         other.deposit(amount)?;
 
