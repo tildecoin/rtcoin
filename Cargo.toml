@@ -1,11 +1,5 @@
-[package]
-name = "rtcoin"
-version = "0.1.0"
-authors = ["Ben Morrison <ben@gbmor.dev>"]
-edition = "2018"
-
-[dependencies]
-#bcrypt = "0.5"
-chrono = "0.4"
-clap = "2.33"
-ryu = "1.0"
+[workspace]
+members = [
+    "rtcoin",
+    "librtcoin",
+]
