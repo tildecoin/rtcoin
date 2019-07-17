@@ -30,6 +30,7 @@ pub struct User {
 impl fmt::Display for User {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let since = Utc::now().signed_duration_since(self.created);
+
         write!(
             f,
             " Name: {}\n Balance: {} tcoin\n Last Login: {}\n Account Age: {}",
@@ -43,9 +44,10 @@ impl fmt::Display for User {
 
 impl User {
     pub fn new(name: &str) -> User {
-        let pass: Vec<u8> = vec![0, 8];
+        let pass: Vec<u8> = vec![1, 0, 1, 0, 1];
         let name = name.to_string();
         let now = Utc::now();
+
         User {
             name,
             created: now,
@@ -135,13 +137,12 @@ mod tests {
 
         let bal_str = user.balance_as_string();
 
-        assert_eq!(&bal_str[..], "1000.0");
+        assert_eq!(bal_str, "1000.0");
     }
 
     #[test]
     fn deposit() {
         let mut user = User::new("Bob Bobson");
-
         user.deposit(100.0).expect("Failed to deposit 100.0");
 
         assert_eq!(user.balance(), 1100.0);
@@ -154,7 +155,6 @@ mod tests {
         let dep = -32.3;
         let mut user = User::new("Bob Bobson");
 
-        // TODO: This isn't panicking like it should
         match user.deposit(dep) {
             Err(err) => panic!(err),
             Ok(_) => println!("Something went wrong, test didn't panic"),
@@ -164,7 +164,6 @@ mod tests {
     #[test]
     fn withdrawal() {
         let mut user = User::new("Bob Bobson");
-
         user.withdraw(100.0).expect("Failed to withdraw 100.0");
 
         assert_eq!(user.balance(), 900.0);
@@ -175,8 +174,6 @@ mod tests {
     #[should_panic]
     fn withdrawal_nsf() {
         let mut user = User::new("Bob Bobson");
-
-        // TODO: This isn't panicking like it should
         user.withdraw(10000.0).unwrap();
     }
 
@@ -201,5 +198,27 @@ mod tests {
         assert_eq!(user2.balance(), 1123.5);
         assert_eq!(user2.messages[0], "Henlo fren!");
         assert_eq!(user2.messages[1], "Have some moar, fren!");
+    }
+
+    #[test]
+    fn append_messages() {
+        let mut user = User::new("Bob Bobson");
+        let old_len = user.messages().len();
+
+        user.append_messages("Testing 1 2 3");
+        user.append_messages("Testing 3 4 5");
+
+        let new_len = user.messages().len();
+
+        assert_ne!(old_len, new_len);
+    }
+
+    #[test]
+    fn user_messages_list() {
+        let mut user = User::new("Bob Bobson");
+        user.append_messages("test");
+
+        let out = user.messages();
+        assert_eq!(out[0], "test");
     }
 }
