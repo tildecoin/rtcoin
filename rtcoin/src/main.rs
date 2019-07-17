@@ -6,7 +6,6 @@
 use std::thread;
 use std::time::Duration;
 
-#[macro_use]
 use clap::{crate_version, value_t}; // the macros
 use clap::{App, Arg, SubCommand};
 
@@ -19,7 +18,7 @@ use librtcoin::*;
 // flat files.
 
 fn main() {
-    print!("\n");
+    println!("");
     let args = App::new("rtcoin")
         // This uses a macro to pull the version
         // stated in Cargo.toml, rather than having
@@ -128,7 +127,8 @@ fn send_tcoin(send_args: &clap::ArgMatches, user: &mut User) {
     thread::sleep(Duration::from_secs(5));
 
     let who = send_args.value_of("username").unwrap();
-    let hwat = send_args.value_of("amount").unwrap().trim().parse().unwrap();
+    let hwat = value_t!(send_args, "amount", f64)
+        .expect("Invalid transfer amount");
     let msg = send_args.value_of("message").unwrap_or("");
 
     user.deposit(hwat).unwrap();
