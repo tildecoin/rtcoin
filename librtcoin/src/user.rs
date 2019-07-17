@@ -8,8 +8,7 @@ use ryu;
 use std::fmt;
 
 // Locals Only
-mod error;
-use error::TcoinError;
+use crate::errors::TcoinError;
 
 // Leaving the fields private to prevent
 // some funny business with the balances
@@ -118,6 +117,14 @@ impl User {
         // certain the messages are handled properly.
         println!("A message to you, Rudy:\n\t{}", msg);
         Ok(())
+    }
+
+    pub fn messages(&self) -> Vec<String> {
+        self.messages.clone()
+    }
+
+    pub fn append_messages(&mut self, msg: &str) {
+        self.messages.push(msg.to_string());
     }
 }
 
