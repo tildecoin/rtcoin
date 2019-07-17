@@ -1,9 +1,11 @@
 [package]
-name = "rtcoin"
+name = "librtcoin-client"
 version = "0.1.0"
 authors = ["Ben Morrison <ben@gbmor.dev>"]
 edition = "2018"
 
 [dependencies]
-librtcoin-client = { path = "../librtcoin-client" }
-clap = "2.33"
+#bcrypt = "0.5"
+chrono = "0.4"
+#simplelog = "0.6"
+ryu = "1.0"

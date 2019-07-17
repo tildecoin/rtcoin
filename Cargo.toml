@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "librtcoin-client",
+    "librtcoin-daemon",
     "rtcoin",
-    "librtcoin",
+    "rtcoin-daemon",
 ]
