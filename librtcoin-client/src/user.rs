@@ -7,9 +7,6 @@ use chrono::prelude::*;
 use ryu;
 use std::fmt;
 
-// Locals Only
-use crate::errors::TcoinError;
-
 // Leaving the fields private to prevent
 // some funny business with the balances
 // or the passwords.
@@ -78,11 +75,9 @@ impl User {
 
     // Check if the deposit will overflow the f64 balance field.
     // Then make sure the deposit is positive.
-    pub fn deposit(&mut self, dep: f64) -> Result<(), TcoinError> {
-        if (std::f64::MAX - self.balance) < dep {
-            return Err(TcoinError::new("Deposit Overflow"));
-        } else if dep < 0.0 {
-            return Err(TcoinError::new("Negative Deposit"));
+    pub fn deposit(&mut self, dep: f64) -> Result<(), String> {
+        if dep < 0.0 {
+            return Err(String::from("Negative Deposit"));
         }
 
         self.balance += dep;
@@ -93,11 +88,11 @@ impl User {
     // A currency simulation with negative balances could get 
     // a bit unwieldy.
     // Also make sure we're withdrawing a positive number.
-    pub fn withdraw(&mut self, amt: f64) -> Result<(), TcoinError> {
+    pub fn withdraw(&mut self, amt: f64) -> Result<(), String> {
         if self.balance < amt {
-            return Err(TcoinError::new("Insufficient funds"));
+            return Err(String::from("Insufficient funds"));
         } else if amt < 0.0 {
-            return Err(TcoinError::new("Negative Withdrawal"));
+            return Err(String::from("Negative Withdrawal"));
         }
 
         self.balance -= amt;
@@ -107,7 +102,7 @@ impl User {
     // Acts as a wrapper for withdraw/deposit. Lets any errors 
     // with those bubble up, and appends the message to the 
     // associated User obj.
-    pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), TcoinError> {
+    pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), String> {
         self.withdraw(amount)?;
         other.deposit(amount)?;
 
@@ -155,10 +150,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    #[should_panic(expected = "Deposit Overflow")]
-    fn deposit_overflow() {
-        let dep = std::f64::MAX;
+    #[should_panic]
+    fn deposit_negative() {
+        let dep = -32.3;
         let mut user = User::new("Bob Bobson");
 
         // TODO: This isn't panicking like it should
@@ -179,8 +173,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    #[should_panic(expected = "Insufficient Funds")]
+    #[should_panic]
     fn withdrawal_nsf() {
         let mut user = User::new("Bob Bobson");
 

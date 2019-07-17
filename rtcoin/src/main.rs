@@ -18,7 +18,7 @@ use librtcoin_client::*;
 // flat files.
 
 fn main() {
-    println!("");
+    println!();
     let args = App::new("rtcoin")
         // This uses a macro to pull the version
         // stated in Cargo.toml, rather than having
