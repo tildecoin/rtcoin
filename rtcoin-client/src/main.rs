@@ -9,9 +9,6 @@ use std::time::Duration;
 use clap::{crate_version, value_t}; // the macros
 use clap::{App, Arg, SubCommand};
 
-// Locals Only
-use rtcoin_server::*;
-
 // TODO: Need to come up with some kind of authentication
 // system for users. And come up with a way to store and
 // retrieve coin balances. The original implementation used
@@ -78,7 +75,7 @@ fn main() {
         .subcommand(SubCommand::with_name("balance").about("Retrieve your rtcoin balance"))
         .get_matches();
 
-    let this_user = User::new("Bob Bobson");
+    // let this_user = User::new("Bob Bobson");
 
     // Obviously concurrency isn't strictly
     // necessary at this point. I'm going to
@@ -86,7 +83,7 @@ fn main() {
     // for authentication that may use extra
     // threads.
     let next = thread::spawn(move || {
-        next_step(this_user, args);
+      //  next_step(this_user, args);
     });
     if let Err(err) = next.join() {
         eprintln!("{:?}", err);
@@ -99,7 +96,7 @@ fn main() {
 // Currently, they are just stubs meant to help me mentally
 // track the program's execution. They will most likely not
 // exist in the near future, replaced with something else.
-
+/*
 fn next_step(user: User, args: clap::ArgMatches) {
     let mut user = user;
     match args.subcommand() {
@@ -142,4 +139,4 @@ fn send_tcoin(send_args: &clap::ArgMatches, user: &mut User) {
     println!("\n{}", user);
 
     println!("\n{:#?}", user);
-}
+}*/
