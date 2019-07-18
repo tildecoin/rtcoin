@@ -6,4 +6,5 @@ edition = "2018"
 
 [dependencies]
 librtcoin-client = { path = "../librtcoin-client" }
+librtcoin-daemon = { path = "../librtcoin-daemon" }
 clap = "2.33"

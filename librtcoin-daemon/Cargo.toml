@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Ben Morrison <ben@gbmor.dev>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+#bcrypt = "0.5"
+chrono = "0.4"
+#simplelog = "0.6"
+ryu = "1.0"

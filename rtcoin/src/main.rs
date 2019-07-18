@@ -10,7 +10,7 @@ use clap::{crate_version, value_t}; // the macros
 use clap::{App, Arg, SubCommand};
 
 // Locals Only
-use librtcoin_client::*;
+use librtcoin_daemon::*;
 
 // TODO: Need to come up with some kind of authentication
 // system for users. And come up with a way to store and
