@@ -6,7 +6,7 @@ the first. In addition, the specifications set forth in the
 draft RFC for `tildecoin`, written by [~aewens](https://github.com/aewens), will be followed.
 * [tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md](https://tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md)
 
-`rtcoin` will use a client-server architecture.
+`rtcoin` will use a client-server-ledger architecture, per the RFC.
 
 This project is in early development. 
 
