@@ -7,6 +7,8 @@ use chrono::prelude::*;
 use ryu;
 use std::fmt;
 
+use crate::db::DB;
+
 // Leaving the fields private to prevent
 // some funny business with the balances
 // or the passwords.
@@ -121,6 +123,11 @@ impl User {
 
     pub fn append_messages(&mut self, msg: &str) {
         self.messages.push(msg.to_string());
+    }
+
+    pub fn compute_balance(&self, db: &DB) -> Result<f64, &'static str> {
+        
+        Ok(100.0)
     }
 }
 
