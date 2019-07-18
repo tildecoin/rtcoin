@@ -9,4 +9,3 @@ edition = "2018"
 chrono = "0.4"
 #simplelog = "0.6"
 clap = "2.33"
-rtcoin-server = { path = "../rtcoin-server" }
