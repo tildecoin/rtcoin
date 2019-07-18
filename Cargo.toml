@@ -1,6 +1,5 @@
 [workspace]
 members = [
     "rtcoin-client",
-    "rtcoin-ledger",
     "rtcoin-server",
 ]
