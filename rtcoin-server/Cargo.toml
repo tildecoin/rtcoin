@@ -1,5 +1,5 @@
 [package]
-name = "librtcoin-client"
+name = "rtcoin-server"
 version = "0.1.0"
 authors = ["Ben Morrison <ben@gbmor.dev>"]
 edition = "2018"
@@ -8,3 +8,4 @@ edition = "2018"
 #bcrypt = "0.5"
 chrono = "0.4"
 #simplelog = "0.6"
+ryu = "1.0"

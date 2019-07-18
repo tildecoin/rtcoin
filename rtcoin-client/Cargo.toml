@@ -5,6 +5,8 @@ authors = ["Ben Morrison <ben@gbmor.dev>"]
 edition = "2018"
 
 [dependencies]
-librtcoin-client = { path = "../librtcoin-client" }
-librtcoin-daemon = { path = "../librtcoin-daemon" }
+#bcrypt = "0.5"
+chrono = "0.4"
+#simplelog = "0.6"
 clap = "2.33"
+rtcoin-server = { path = "../rtcoin-server" }

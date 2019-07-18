@@ -1,5 +1,5 @@
 [package]
-name = "rtcoin-daemon"
+name = "rtcoin-ledger"
 version = "0.1.0"
 authors = ["Ben Morrison <ben@gbmor.dev>"]
 edition = "2018"
