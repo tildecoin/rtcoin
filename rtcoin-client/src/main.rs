@@ -3,18 +3,14 @@
 // See LICENSE file for detailed license information.
 //
 
+use std::error::Error;
 use std::thread;
 use std::time::Duration;
 
 use clap::{crate_version, value_t}; // the macros
 use clap::{App, Arg, SubCommand};
 
-// TODO: Need to come up with some kind of authentication
-// system for users. And come up with a way to store and
-// retrieve coin balances. The original implementation used
-// flat files.
-
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     println!();
     let args = App::new("rtcoin")
         // This uses a macro to pull the version
@@ -88,14 +84,14 @@ fn main() {
     if let Err(err) = next.join() {
         eprintln!("{:?}", err);
     }
+
+    Ok(())
 }
 
-// TODO: The following functions need to all be moved into
-// other files and imported as libraries. This will allow
-// rtcoin to utilize cargo's built-in unit testing framework.
-// Currently, they are just stubs meant to help me mentally
-// track the program's execution. They will most likely not
-// exist in the near future, replaced with something else.
+// Currently, the following are just stubs meant to help me 
+// mentally track the program's execution. They will most 
+// likely not exist in the near future, replaced with 
+// something else.
 /*
 fn next_step(user: User, args: clap::ArgMatches) {
     let mut user = user;
