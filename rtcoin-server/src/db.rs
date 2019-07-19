@@ -11,8 +11,6 @@ use rusqlite::{
     Connection,
     NO_PARAMS,
     OpenFlags,
-    Statement,
-    types::ToSql,
 };
 
 use crate::crypt::*;
@@ -68,8 +66,13 @@ impl DB {
     }
 
     pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
-        let stmt = format!("SELECT * FROM ledger WHERE (destination = {} OR source = {})", user, user);
+        let stmt = format!(
+            "SELECT * FROM ledger WHERE (destination = {} OR source = {})", 
+            user, 
+            user,
+            );
         let mut stmt = self.conn.prepare(&stmt)?;
+
         let rows = stmt.query_map(NO_PARAMS, |row| {
           Ok(LedgerEntry {
             id: row.get(0)?,
@@ -83,10 +86,12 @@ impl DB {
             receipt_hash: row.get(8)?,
           })  
         })?;
+        
         let mut out: Vec<LedgerEntry> = Vec::new();
         for row in rows {
             out.push(row?);
         }
+        
         Ok(out)
     }
 

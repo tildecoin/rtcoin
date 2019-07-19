@@ -126,23 +126,31 @@ impl User {
         self.messages.push(msg.to_string());
     }
 
-    pub fn compute_balance(&self, db: &DB) -> f64 {
-        let mut out = 1000.0;
+    pub fn compute_balance(&self, db: &DB) -> Result<f64, String> {
+        let out = db.rows_by_user(&self.name);
 
-        if let Ok(recv) = db.rows_by_user(&self.name) {
+        if let Ok(recv) = out {
+            let mut out = 1000.0;
+
             for entry in recv {
-                if entry.destination == self.name {
+                if entry.destination == self.name { // if user is recipient
                     out += entry.amount;
                     continue;
                 }
-                if entry.source == self.name {
+                if entry.source == self.name { // if user is sender
                     out -= entry.amount;
                     continue;
                 }
             }
-        }
+            
+            return Ok(out)
 
-        out
+        } else if let Err(err) = out {
+            // repackage the error as Err(&str)
+            return Err(format!("{}", err))
+        };
+
+        Err("Something went wrong".to_string())
     }
 }
 
