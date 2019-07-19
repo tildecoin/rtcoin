@@ -18,7 +18,7 @@ use rusqlite::{
 use crate::crypt::*;
 
 pub struct DB {
-    conn: Connection,
+    pub conn: Connection,
 }
 
 pub struct LedgerEntry {
