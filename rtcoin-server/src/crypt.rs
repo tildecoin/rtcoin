@@ -3,6 +3,13 @@
 // See LICENSE file for detailed license information.
 //
 
+// TODO: Implement symmetric encryption of the rtcoin
+// ledger database. What's currently present here are
+// various functions I pulled out of the documentation
+// so I can remember what to use later, when I get to
+// this. I'll handle this once I get the rest of the
+// database's interaction sorted.
+
 use aes_soft::Aes256;
 use block_modes::{BlockMode, Cbc};
 use block_modes::block_padding::Pkcs7;
