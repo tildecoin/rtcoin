@@ -17,7 +17,7 @@ pub struct DB {
 }
 
 impl DB {
-    fn connect(path: &str) -> Box<DB> {
+    pub fn connect(path: &str) -> Box<DB> {
         let db_flags = sqlite::OpenFlags::new();
         db_flags.set_create();     // Create DB if it doesn't exist. 
         db_flags.set_read_write(); // RW mode.
@@ -39,8 +39,8 @@ impl DB {
 
         let key: Vec<u8> = Vec::new();
 
-        let user_dest_stmt = "SELECT * FROM ledger WHERE dest = ?".to_string();
-        let user_src_stmt = "SELECT * FROM ledger WHERE src = ?".to_string();
+        let user_dest_stmt = "SELECT * FROM ledger WHERE destination = ?".to_string();
+        let user_src_stmt = "SELECT * FROM ledger WHERE source = ?".to_string();
         
         Box::new(DB {
             conn,
@@ -50,24 +50,24 @@ impl DB {
         })
     }
 
-    fn rows_by_dest_user(&self, user: &str) -> sqlite::Statement {
+    pub fn rows_by_dest_user(&self, user: &str) -> sqlite::Statement {
         let mut dest_rows = self.conn.prepare(&self.user_dest_stmt.clone()).unwrap();
         dest_rows.bind(1, user).unwrap();
         dest_rows
     }
 
-    fn rows_by_src_user(&self, user: &str) -> sqlite::Statement {
+    pub fn rows_by_src_user(&self, user: &str) -> sqlite::Statement {
         let mut src_rows = self.conn.prepare(&self.user_src_stmt.clone()).unwrap();
         src_rows.bind(1, user).unwrap();
         src_rows
     }
 
-    fn encrypt(&self) -> Result<(), String> {
+    pub fn encrypt(&self) -> Result<(), String> {
         crypt(); 
         Ok(())
     }
 
-    fn hmac(&self) -> Result<(), String> {
+    pub fn hmac(&self) -> Result<(), String> {
         auth(); 
         Ok(())
     }
