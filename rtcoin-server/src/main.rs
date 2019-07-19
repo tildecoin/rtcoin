@@ -3,24 +3,20 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::error::Error;
-use std::fs;
-use std::io::{
-    BufRead,
-    BufReader,
+use std::{
+    error::Error,
+    fs,
+    io::BufRead,
+    io::BufReader,
+    os::unix::net::UnixStream,
+    os::unix::net::UnixListener,
+    path::Path,
+    thread,
 };
-use std::os::unix::net::{
-    UnixStream,
-    UnixListener,
-};
-use std::path::Path;
-use std::thread;
 
 mod crypt;
 mod db;
 mod user;
-
-use user::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let sock = Path::new("/tmp/rtcoin-serv.sock");
