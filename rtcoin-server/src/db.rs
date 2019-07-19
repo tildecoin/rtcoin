@@ -5,6 +5,7 @@
 
 use std::{
     path::Path,
+    sync::mpsc,
 };
 
 use rusqlite::{
@@ -15,10 +16,46 @@ use rusqlite::{
 
 use crate::crypt::*;
 
+// Wrapper for the database connection and the
+// communication channel.
 pub struct DB {
     pub conn: Connection,
+    pub pipe: mpsc::Receiver::<Comm>,
 }
 
+// Represents a single request, or communication,
+// intended for the database worker thread.
+// Includes an outbound channel for the response.
+pub struct Comm {
+    trans: Trans,
+    origin: mpsc::Sender::<Reply>,
+}
+
+// This identifies what should be queried for.
+// The assumption is that several rows will be
+// expected by the caller.
+pub enum Trans {
+    ID(u32),
+    TransactionType(String),
+    Timestamp(String),
+    Source(String),
+    Destination(String),
+    Amount(f64),
+    LedgerHash(Vec<u8>),
+    ReceiptID(u32),
+    ReceiptHash(Vec<u8>),
+}
+
+// Response data to the Trans enum above.
+pub enum Reply {
+    Int(u32),
+    F64(f64),
+    Text(String),
+    Data(Vec<u8>),
+}
+
+// Each row in the ledger table is serialized
+// into an instance of this struct.
 pub struct LedgerEntry {
     pub id: u32,
     pub transaction_type: String,
@@ -31,8 +68,16 @@ pub struct LedgerEntry {
     pub receipt_hash: Vec<u8>,
 }
 
+impl Comm {
+    pub fn new(trans: Trans, origin: mpsc::Sender::<Reply>) -> Comm {
+        Comm {
+            trans,
+            origin,
+        }
+    }
+}
 impl DB {
-    pub fn connect(path: &str) -> DB {
+    pub fn connect(path: &str, pipe: mpsc::Receiver::<Comm>) -> DB {
         let mut db_flags = OpenFlags::empty();
         db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true);        // Create DB if it doesn't exist. 
         db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true);    // RW mode.
@@ -62,7 +107,15 @@ impl DB {
 
         DB {
             conn,
+            pipe,
         }
+    }
+
+    pub fn worker_thread(&self) -> Result<(), String> {
+        for comm in self.pipe.recv() {
+            run_transaction(comm)?;         
+        } 
+        Ok(())
     }
 
     pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
@@ -104,6 +157,14 @@ impl DB {
         auth(); 
         Ok(())
     }
+}
+
+fn run_transaction(comm: Comm) -> Result<(), String>{
+    // I meant to get to this and got sidetracked.
+    // At least the communication between client
+    // connections and the database/ledger is much
+    // cleaner!
+    Ok(())
 }
 
 #[cfg(test)]

@@ -6,55 +6,65 @@
 use std::{
     error::Error,
     fs,
-    io::BufRead,
-    io::BufReader,
-    os::unix::net::UnixStream,
     os::unix::net::UnixListener,
     path::Path,
-    //sync::Arc,
+    sync::mpsc,
     thread,
+    time::Duration,
 };
 
+mod conn;
 mod crypt;
 mod db;
 mod user;
 
-use db::DB;
+use db::{
+    DB,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // Do I open a new sqlite connection for each client?
-    // Or do I pool queries and execute them from a single connection?
-    // Choices...
-    //
-    // let ledger_db = Arc::new(DB::connect("/etc/rtcoin/ledger.db"));
+    let (tx, rx) = mpsc::channel::<db::Comm>();
+    let ledger = DB::connect("/etc/rtcoin/ledger.db", rx);
+
+    let ledger_worker = thread::Builder::new();
+    let ledger_worker = ledger_worker.name("Ledger Worker".into());
+
+    ledger_worker.spawn(move || {
+        if let Err(err) = ledger.worker_thread() {
+            eprintln!("Ledger Worker Error: {}", err);
+        };
+
+        ledger.conn.close().unwrap();
+    })?;
 
     let sock = Path::new("/tmp/rtcoin-serv.sock");
-    if fs::metadata(sock).is_ok() {
+    if fs::metadata(sock).is_ok() { // if file exists...
         fs::remove_file(sock)?;
     }
 
     let lstnr = UnixListener::bind(sock)
         .expect(&format!("Could not bind to socket: {}", sock.to_str().unwrap()));
+    lstnr.set_nonblocking(true)?;
 
     for conn in lstnr.incoming() {
+        let tx = tx.clone();
         match conn {
-            Ok(c) => {
-                // let arc_ref = Arc::clone(&ledger_db);
+            Ok(stream) => {
                 thread::spawn(move || {
-                    init_conn(c);
+                    stream.set_write_timeout(Some(Duration::from_secs(5))).unwrap();
+                    stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+                    conn::init(stream, tx);
                 });
-            },
-            Err(err) => eprintln!("Connection error: {}", err),
+            }
+            
+            Err(err) => {
+                eprintln!("Connection error: {}", err);
+            }
         }
     }
 
+    // Tidy up
     fs::remove_file(sock)?;
     Ok(())
 }
 
-fn init_conn(conn: UnixStream) {
-    let stream = BufReader::new(conn);
-    for line in stream.lines() {
-        println!("{}", line.unwrap());
-    }
-}

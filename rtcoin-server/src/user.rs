@@ -3,7 +3,9 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::fmt;
+use std::{
+    fmt,
+};
 
 use chrono::prelude::*;
 use ryu;
