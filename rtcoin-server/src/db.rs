@@ -3,7 +3,9 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::path::Path;
+use std::{
+    path::Path,
+};
 
 use sqlite;
 
@@ -13,11 +15,10 @@ pub struct DB {
     conn: sqlite::Connection,
     user_src_stmt: String,
     user_dest_stmt: String,
-    key: Vec<u8>,
 }
 
 impl DB {
-    pub fn connect(path: &str) -> Box<DB> {
+    pub fn connect(path: &str) -> DB {
         let db_flags = sqlite::OpenFlags::new();
         db_flags.set_create();     // Create DB if it doesn't exist. 
         db_flags.set_read_write(); // RW mode.
@@ -37,17 +38,14 @@ impl DB {
         conn.execute("CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, timestamp TEXT, source TEXT, destination TEXT, amount REAL, ledger_hash BLOB, receipt_id INTEGER, receipt_hash BLOB)")
             .unwrap();
 
-        let key: Vec<u8> = Vec::new();
-
         let user_dest_stmt = "SELECT * FROM ledger WHERE destination = ?".to_string();
         let user_src_stmt = "SELECT * FROM ledger WHERE source = ?".to_string();
         
-        Box::new(DB {
+        DB {
             conn,
             user_src_stmt,
             user_dest_stmt,
-            key,
-        })
+        }
     }
 
     pub fn rows_by_dest_user(&self, user: &str) -> sqlite::Statement {
