@@ -2,11 +2,11 @@
 // rtcoin - Copyright (c) 2019 Ben Morrison (gbmor)
 // See LICENSE file for detailed license information.
 //
+
 use std::fmt;
 
 use chrono::prelude::*;
 use ryu;
-use sqlite::State;
 
 use crate::db::DB;
 
@@ -127,20 +127,21 @@ impl User {
     }
 
     pub fn compute_balance(&self, db: &DB) -> f64 {
-        let mut recv = db.rows_by_dest_user(&self.name);
-        let mut send = db.rows_by_src_user(&self.name);
+        let mut out = 1000.0;
 
-        let mut outbound = 0.0;
-        while let State::Row = send.next().unwrap() {
-            outbound += send.read::<f64>(0).unwrap();
+        if let Ok(recv) = db.rows_by_dest_user(&self.name) {
+            for entry in recv {
+                out += entry.amount;
+            }
         }
 
-        let mut inbound = 0.0;
-        while let State::Row = recv.next().unwrap() {
-            inbound += recv.read::<f64>(0).unwrap();
+        if let Ok(send) = db.rows_by_src_user(&self.name) {
+            for entry in send {
+                out -= entry.amount;
+            }
         }
 
-        1000.0 + inbound - outbound
+        out
     }
 }
 

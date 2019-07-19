@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let lstnr = UnixListener::bind(sock)
-        .expect("Could not bind to socket /tmp/rtcoin-serv.sock");
+        .expect(&format!("Could not bind to socket: {}", sock.to_str().unwrap()));
 
     for conn in lstnr.incoming() {
         match conn {
