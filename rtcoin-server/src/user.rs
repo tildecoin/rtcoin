@@ -129,15 +129,16 @@ impl User {
     pub fn compute_balance(&self, db: &DB) -> f64 {
         let mut out = 1000.0;
 
-        if let Ok(recv) = db.rows_by_dest_user(&self.name) {
+        if let Ok(recv) = db.rows_by_user(&self.name) {
             for entry in recv {
-                out += entry.amount;
-            }
-        }
-
-        if let Ok(send) = db.rows_by_src_user(&self.name) {
-            for entry in send {
-                out -= entry.amount;
+                if entry.destination == self.name {
+                    out += entry.amount;
+                    continue;
+                }
+                if entry.source == self.name {
+                    out -= entry.amount;
+                    continue;
+                }
             }
         }
 

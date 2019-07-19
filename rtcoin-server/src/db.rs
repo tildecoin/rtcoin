@@ -67,31 +67,8 @@ impl DB {
         }
     }
 
-    pub fn rows_by_dest_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
-        let stmt = format!("SELECT * FROM ledger WHERE source = {}", user);
-        let mut stmt = self.conn.prepare(&stmt)?;
-        let rows = stmt.query_map(NO_PARAMS, |row| {
-          Ok(LedgerEntry {
-            id: row.get(0)?,
-            transaction_type: row.get(1)?,
-            timestamp: row.get(2)?,
-            source: row.get(3)?,
-            destination: row.get(4)?,
-            amount: row.get(5)?,
-            ledger_hash: row.get(6)?,
-            receipt_id: row.get(7)?,
-            receipt_hash: row.get(8)?,
-          })  
-        })?;
-        let mut out: Vec<LedgerEntry> = Vec::new();
-        for row in rows {
-            out.push(row?);
-        }
-        Ok(out)
-    }
-
-    pub fn rows_by_src_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
-        let stmt = format!("SELECT * FROM ledger WHERE source = {}", user);
+    pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
+        let stmt = format!("SELECT * FROM ledger WHERE (destination = {} OR source = {})", user, user);
         let mut stmt = self.conn.prepare(&stmt)?;
         let rows = stmt.query_map(NO_PARAMS, |row| {
           Ok(LedgerEntry {
