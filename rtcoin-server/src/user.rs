@@ -91,7 +91,7 @@ impl User {
     }
 
     // Check if the withdrawal results in a negative balance.
-    // A currency simulation with negative balances could get 
+    // A currency simulation with negative balances could get
     // a bit unwieldy.
     // Also make sure we're withdrawing a positive number.
     pub fn withdraw(&mut self, amt: f64) -> Result<(), &'static str> {
@@ -105,8 +105,8 @@ impl User {
         Ok(())
     }
 
-    // Acts as a wrapper for withdraw/deposit. Lets any errors 
-    // with those bubble up, and appends the message to the 
+    // Acts as a wrapper for withdraw/deposit. Lets any errors
+    // with those bubble up, and appends the message to the
     // associated User obj.
     pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), &'static str> {
         self.withdraw(amount)?;
@@ -135,21 +135,22 @@ impl User {
             let mut out = 1000.0;
 
             for entry in recv {
-                if entry.destination == self.name { // if user is recipient
+                if entry.destination == self.name {
+                    // if user is recipient
                     out += entry.amount;
                     continue;
                 }
-                if entry.source == self.name { // if user is sender
+                if entry.source == self.name {
+                    // if user is sender
                     out -= entry.amount;
                     continue;
                 }
             }
-            
-            return Ok(out)
 
+            return Ok(out);
         } else if let Err(err) = out {
             // repackage the error as Err(&str)
-            return Err(format!("{}", err))
+            return Err(format!("{}", err));
         };
 
         Err("Something went wrong".to_string())

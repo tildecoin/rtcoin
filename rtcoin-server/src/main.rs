@@ -3,7 +3,14 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{error::Error, fs, os::unix::net::UnixListener, path::Path, sync::mpsc, thread};
+use std::{
+    error::Error, 
+    fs, 
+    os::unix::net::UnixListener, 
+    path::Path, 
+    sync::mpsc, 
+    thread,
+};
 
 mod conn;
 mod crypt;

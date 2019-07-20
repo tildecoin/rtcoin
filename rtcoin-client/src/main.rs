@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // for authentication that may use extra
     // threads.
     let next = thread::spawn(move || {
-      //  next_step(this_user, args);
+        //  next_step(this_user, args);
     });
     if let Err(err) = next.join() {
         eprintln!("{:?}", err);
@@ -88,9 +88,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-// Currently, the following are just stubs meant to help me 
-// mentally track the program's execution. They will most 
-// likely not exist in the near future, replaced with 
+// Currently, the following are just stubs meant to help me
+// mentally track the program's execution. They will most
+// likely not exist in the near future, replaced with
 // something else.
 /*
 fn next_step(user: User, args: clap::ArgMatches) {

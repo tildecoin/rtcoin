@@ -4,15 +4,15 @@
 //
 
 use std::{
-    error::Error,
-    path::Path,
+    error::Error, 
+    path::Path, 
     sync::mpsc,
 };
 
 use rusqlite::{
-    Connection,
+    Connection, 
+    OpenFlags, 
     NO_PARAMS,
-    OpenFlags,
 };
 
 use crate::crypt::*;
@@ -22,7 +22,7 @@ use crate::crypt::*;
 #[derive(Debug)]
 pub struct DB {
     pub conn: Connection,
-    pub pipe: mpsc::Receiver::<Comm>,
+    pub pipe: mpsc::Receiver<Comm>,
 }
 
 // Represents a single request, or communication,
@@ -32,7 +32,7 @@ pub struct DB {
 pub struct Comm {
     kind: Kind,
     trans: Trans,
-    origin: mpsc::Sender::<Reply>,
+    origin: mpsc::Sender<Reply>,
 }
 
 // This identifies what should be queried for.
@@ -92,7 +92,7 @@ pub struct LedgerEntry {
 impl Comm {
     // Cleanly package up a new request for
     // the ledger database worker thread.
-    pub fn new(kind: Kind, trans: Trans, origin: mpsc::Sender::<Reply>) -> Comm {
+    pub fn new(kind: Kind, trans: Trans, origin: mpsc::Sender<Reply>) -> Comm {
         Comm {
             kind,
             trans,
@@ -103,18 +103,18 @@ impl Comm {
 impl DB {
     // Connect to the ledger database, creating it
     // if necessary.
-    pub fn connect(path: &str, pipe: mpsc::Receiver::<Comm>) -> DB {
+    pub fn connect(path: &str, pipe: mpsc::Receiver<Comm>) -> DB {
         let mut db_flags = OpenFlags::empty();
-        db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true);        // Create DB if it doesn't exist. 
-        db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true);    // RW mode.
-        db_flags.set(OpenFlags::SQLITE_OPEN_FULL_MUTEX, true);    // Flag to open the database in Serialized mode.
+        db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true); // Create DB if it doesn't exist.
+        db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true); // RW mode.
+        db_flags.set(OpenFlags::SQLITE_OPEN_FULL_MUTEX, true); // Flag to open the database in Serialized mode.
         db_flags.set(OpenFlags::SQLITE_OPEN_PRIVATE_CACHE, true); // Use private cache even if shared is enabled.
                                                                   // See: https://www.sqlite.org/c3ref/open.html
 
         let path = Path::new(path);
-        let conn = Connection::open_with_flags(path, db_flags)
-            .expect("Could not open ledger connection");
-        
+        let conn =
+            Connection::open_with_flags(path, db_flags).expect("Could not open ledger connection");
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS ledger (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -128,13 +128,10 @@ impl DB {
                 receipt_hash    TEXT
                 )",
             NO_PARAMS,
-            )
-            .expect("Could not create table");
+        )
+        .expect("Could not create table");
 
-        DB {
-            conn,
-            pipe,
-        }
+        DB { conn, pipe }
     }
 
     // Continually read from the channel to
@@ -142,39 +139,36 @@ impl DB {
     pub fn worker_thread(&mut self) {
         while let Ok(comm) = self.pipe.recv() {
             match comm.kind {
-                Kind::BulkQuery => {
-                    match bulk_query(&mut self.conn, comm) {
-                        Ok(_) => continue,
-                        Err(n) => eprintln!("{}", n),
-                    }
+                Kind::BulkQuery => match bulk_query(&mut self.conn, comm) {
+                    Ok(_) => continue,
+                    Err(n) => eprintln!("{}", n),
                 },
                 _ => continue,
             }
-        } 
+        }
     }
 
     // Return the rows associated with a single
     // user, receiving and sending entries.
     pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
         let stmt = format!(
-            "SELECT * FROM ledger WHERE (destination = '{}' OR source = '{}')", 
-            user, 
-            user,
-            );
+            "SELECT * FROM ledger WHERE (destination = '{}' OR source = '{}')",
+            user, user,
+        );
 
         let stmt = self.conn.prepare(&stmt)?;
         let out = serialize_rows(stmt).unwrap();
-        
+
         Ok(out)
     }
 
     pub fn encrypt(&self) -> Result<(), String> {
-        crypt(); 
+        crypt();
         Ok(())
     }
 
     pub fn hmac(&self) -> Result<(), String> {
-        auth(); 
+        auth();
         Ok(())
     }
 }
@@ -184,7 +178,7 @@ impl DB {
 fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
     let trans_info = comm.trans;
     let mut stmt = "SELECT * FROM ledger WHERE ".to_string();
-    
+
     match trans_info {
         Trans::ID(n) => stmt.push_str(&format!("id = '{}'", n)),
         Trans::TransactionType(n) => stmt.push_str(&format!("type = '{}'", n)),
@@ -223,7 +217,7 @@ fn serialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn
             ledger_hash: row.get(6)?,
             receipt_id: row.get(7)?,
             receipt_hash: row.get(8)?,
-        })  
+        })
     })?;
 
     let mut out: Vec<LedgerEntry> = Vec::new();
@@ -241,6 +235,6 @@ mod test {
 
     #[test]
     fn db_test_placeholder() {
-        assert_eq!(529, 23*23);
+        assert_eq!(529, 23 * 23);
     }
 }

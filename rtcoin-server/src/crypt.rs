@@ -11,11 +11,17 @@
 // database's interaction sorted.
 
 use aes_soft::Aes256;
-use block_modes::{BlockMode, Cbc};
-use block_modes::block_padding::Pkcs7;
+use block_modes::{
+    BlockMode, 
+    block_padding::Pkcs7,
+    Cbc,
+};
 
+use hmac::{
+    Hmac, 
+    Mac,
+};
 use sha2::Sha256;
-use hmac::{Hmac, Mac};
 
 use crate::db::DB;
 
@@ -36,8 +42,7 @@ pub fn crypt() {
 
 type HmacSha256 = Hmac<Sha256>;
 pub fn auth() {
-    let mut mac = HmacSha256::new_varkey(b"dog feet")
-        .expect("Something went wrong");
+    let mut mac = HmacSha256::new_varkey(b"dog feet").expect("Something went wrong");
 
     mac.input(b"I have a secret about dog feet");
 
@@ -45,8 +50,7 @@ pub fn auth() {
     let res = mac.result();
     //let code_bytes = result.code();
 
-    let mut mac = HmacSha256::new_varkey(b"dog feet")
-        .expect("Oh noez");
+    let mut mac = HmacSha256::new_varkey(b"dog feet").expect("Oh noez");
 
     mac.input(b"some message");
 
