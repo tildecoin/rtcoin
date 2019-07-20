@@ -23,15 +23,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Connect to the ledger database. Will create the DB
     // if it doesn't already exist.
     let (tx, rx) = mpsc::channel::<db::Comm>();
-    let mut ledger = DB::connect("local/rtcoinledger.db", rx);
-
-    let ledger_worker = thread::Builder::new();
-    let ledger_worker = ledger_worker.name("Ledger Worker".into());
-
+    
     // Spawn the ledger worker to listen for query requests.
-    ledger_worker.spawn(move || {
-        ledger.worker_thread();
-    })?;
+    spawn_ledger_worker_with_receiver(rx)?;
 
     // If the socket exists already, remove it.
     let sock = Path::new("local/rtcoin-serv.sock");
@@ -39,14 +33,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         fs::remove_file(sock)?;
     }
 
-    // Bind to the socket.
+    // Bind to the socket. Spawn a new connection 
+    // handler thread for each client connection.
+    spawn_for_connections(&sock, tx);
+
+    // Tidy up
+    fs::remove_file(sock)?;
+    Ok(())
+}
+
+fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) -> Result<(), Box<dyn Error>> {
+    let mut ledger = DB::connect("local/rtcoinledger.db", rx);
+
+    let ledger_worker = thread::Builder::new();
+    let ledger_worker = ledger_worker.name("Ledger Worker".into());
+
+    ledger_worker.spawn(move || {
+        ledger.worker_thread();
+    })?;
+
+    Ok(())
+}
+
+fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
     let lstnr = UnixListener::bind(sock).expect(&format!(
         "Could not bind to socket: {}",
         sock.to_str().unwrap()
     ));
 
-    // Spawn a new connection handler thread for
-    // each client connection.
     while let Ok((conn, addr)) = lstnr.accept() {
         let trx = tx.clone();
         let new_conn = thread::Builder::new();
@@ -54,10 +68,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         let new_conn = new_conn.name(name);
         new_conn.spawn(move || {
             conn::init(conn, trx);
-        })?;
+        }).unwrap();
     }
-
-    // Tidy up
-    fs::remove_file(sock)?;
-    Ok(())
 }

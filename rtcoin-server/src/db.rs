@@ -106,15 +106,16 @@ impl DB {
     // if necessary.
     pub fn connect(path: &str, pipe: mpsc::Receiver<Comm>) -> DB {
         let mut db_flags = OpenFlags::empty();
-        db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true); // Create DB if it doesn't exist.
-        db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true); // RW mode.
-        db_flags.set(OpenFlags::SQLITE_OPEN_FULL_MUTEX, true); // Flag to open the database in Serialized mode.
+        db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true);        // Create DB if it doesn't exist.
+        db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true);    // RW mode.
+        db_flags.set(OpenFlags::SQLITE_OPEN_FULL_MUTEX, true);    // Flag to open the database in Serialized mode.
         db_flags.set(OpenFlags::SQLITE_OPEN_PRIVATE_CACHE, true); // Use private cache even if shared is enabled.
                                                                   // See: https://www.sqlite.org/c3ref/open.html
 
         let path = Path::new(path);
         let conn =
-            Connection::open_with_flags(path, db_flags).expect("Could not open ledger connection");
+            Connection::open_with_flags(path, db_flags)
+                .expect("Could not open ledger connection");
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS ledger (
@@ -132,7 +133,10 @@ impl DB {
         )
         .expect("Could not create table");
 
-        DB { conn, pipe }
+        DB { 
+            conn, 
+            pipe, 
+        }
     }
 
     // Continually read from the channel to
@@ -161,16 +165,6 @@ impl DB {
         let out = serialize_rows(stmt).unwrap();
 
         Ok(out)
-    }
-
-    pub fn encrypt(&self) -> Result<(), String> {
-        crypt();
-        Ok(())
-    }
-
-    pub fn hmac(&self) -> Result<(), String> {
-        auth();
-        Ok(())
     }
 }
 
@@ -259,5 +253,9 @@ mod test {
         worker_tx.send(comm).unwrap();
 
         let get = rx.recv().unwrap();
+
+        if fs::metadata(path).is_ok() {
+            fs::remove_file(path).unwrap();
+        }
     }
 }

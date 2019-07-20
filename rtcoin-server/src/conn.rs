@@ -62,3 +62,28 @@ pub fn addr(addr: &SocketAddr) -> String {
 
     return String::from("Unknown Thread");
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use std::{
+        fs,
+        os::unix::net::UnixListener,
+    };
+
+    #[test]
+    fn socket_addr() {
+        let sock_path = Path::new("test-sock");
+        let sock = UnixListener::bind(sock_path).unwrap();
+
+        let addy = sock.local_addr().unwrap();
+        let name = addr(&addy);
+
+        assert_eq!(name, "test-sock");
+
+        if fs::metadata(sock_path).is_ok() {
+            fs::remove_file(sock_path).unwrap();
+        }
+    }
+}
