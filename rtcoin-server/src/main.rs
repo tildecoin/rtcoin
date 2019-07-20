@@ -23,12 +23,15 @@ use db::{
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // Connect to the ledger database. Will create the DB
+    // if it doesn't already exist.
     let (tx, rx) = mpsc::channel::<db::Comm>();
-    let mut ledger = DB::connect("/etc/rtcoin/ledger.db", rx);
+    let mut ledger = DB::connect("local/rtcoinledger.db", rx);
 
     let ledger_worker = thread::Builder::new();
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
 
+    // Spawn the ledger worker to listen for query requests.
     ledger_worker.spawn(move || {
         if let Err(err) = ledger.worker_thread() {
             eprintln!("Ledger Worker Error: {}", err);
@@ -36,15 +39,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         ledger.conn.close().unwrap();
     })?;
 
-    let sock = Path::new("/tmp/rtcoin-serv.sock");
-    if fs::metadata(sock).is_ok() { // if file exists...
+    // If the socket exists already, remove it.
+    let sock = Path::new("local/rtcoin-serv.sock");
+    if fs::metadata(sock).is_ok() {
         fs::remove_file(sock)?;
     }
 
+    // Bind to the socket.
     let lstnr = UnixListener::bind(sock)
         .expect(&format!("Could not bind to socket: {}", sock.to_str().unwrap()));
-    lstnr.set_nonblocking(true)?;
 
+    // Spawn a new connection handler thread for 
+    // each client connection.
     for conn in lstnr.incoming() {
         let tx = tx.clone();
         match conn {

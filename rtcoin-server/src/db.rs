@@ -19,6 +19,7 @@ use crate::crypt::*;
 
 // Wrapper for the database connection and the
 // communication channel.
+#[derive(Debug)]
 pub struct DB {
     pub conn: Connection,
     pub pipe: mpsc::Receiver::<Comm>,
@@ -27,6 +28,7 @@ pub struct DB {
 // Represents a single request, or communication,
 // intended for the database worker thread.
 // Includes an outbound channel for the response.
+#[derive(Debug)]
 pub struct Comm {
     kind: Kind,
     trans: Trans,
@@ -38,6 +40,7 @@ pub struct Comm {
 // expected by the caller. The enumerated
 // transaction types are subject to change as
 // the design progresses.
+#[derive(Debug)]
 pub enum Trans {
     ID(u32),
     TransactionType(String),
@@ -52,6 +55,7 @@ pub enum Trans {
 
 // Type of transaction we're doing with the
 // database.
+#[derive(Debug)]
 pub enum Kind {
     BulkQuery,
     BulkInsert,
@@ -62,6 +66,7 @@ pub enum Kind {
 }
 
 // Response data to the Trans enum above.
+#[derive(Debug)]
 pub enum Reply {
     Int(u32),
     F64(f64),
@@ -71,6 +76,7 @@ pub enum Reply {
 
 // Each row in the ledger table is serialized
 // into an instance of this struct.
+#[derive(Debug)]
 pub struct LedgerEntry {
     pub id: u32,
     pub transaction_type: String,
@@ -84,6 +90,8 @@ pub struct LedgerEntry {
 }
 
 impl Comm {
+    // Cleanly package up a new request for
+    // the ledger database worker thread.
     pub fn new(kind: Kind, trans: Trans, origin: mpsc::Sender::<Reply>) -> Comm {
         Comm {
             kind,
@@ -93,6 +101,8 @@ impl Comm {
     }
 }
 impl DB {
+    // Connect to the ledger database, creating it
+    // if necessary.
     pub fn connect(path: &str, pipe: mpsc::Receiver::<Comm>) -> DB {
         let mut db_flags = OpenFlags::empty();
         db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true);        // Create DB if it doesn't exist. 
@@ -119,7 +129,7 @@ impl DB {
                 )",
             NO_PARAMS,
             )
-            .unwrap();
+            .expect("Could not create table");
 
         DB {
             conn,
@@ -127,6 +137,8 @@ impl DB {
         }
     }
 
+    // Continually read from the channel to
+    // process the incoming Comms.
     pub fn worker_thread(&mut self) -> Result<(), Box<dyn Error>> {
         for comm in self.pipe.recv() {
             match comm.kind {
@@ -137,6 +149,8 @@ impl DB {
         Ok(())
     }
 
+    // Return the rows associated with a single
+    // user, receiving and sending entries.
     pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
         let stmt = format!(
             "SELECT * FROM ledger WHERE (destination = {} OR source = {})", 
@@ -161,6 +175,8 @@ impl DB {
     }
 }
 
+// Returns a vector of LedgerEntry structs, each representing
+// a single row returned by this query.
 fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
     let trans_info = comm.trans;
     let mut stmt = "SELECT * WHERE ".to_string();
