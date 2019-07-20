@@ -12,10 +12,6 @@ os:
 
 dist: xenial
 
-env:
-  global:
-    - RUSTFLAGS="-C link-dead-code"
-
 addons:
   apt:
     packages:
