@@ -5,6 +5,7 @@
 
 use std::{
     error::Error, 
+    fs,
     path::Path, 
     sync::mpsc,
 };
@@ -191,7 +192,6 @@ fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
         Trans::ReceiptHash(n) => stmt.push_str(&format!("receipt_hash = '{}'", n)),
     }
 
-    eprintln!("{}", stmt);
     let src_channel = comm.origin;
     let txn = db.transaction()?;
     let stmt = txn.prepare(&stmt)?;
@@ -233,8 +233,31 @@ fn serialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn
 mod test {
     use super::*;
 
+    use std::{
+        thread,
+    };
+
     #[test]
-    fn db_test_placeholder() {
-        assert_eq!(529, 23 * 23);
+    fn worker_thread_spawn_send_recv_serialize_rows() {
+        let path = "./test-db";
+        let conn = Connection::open(path).unwrap();
+        let (worker_tx, pipe) = mpsc::channel::<Comm>();
+        let mut db = DB::connect(path, pipe);
+
+        assert!(fs::metadata(path).is_ok());
+
+        thread::spawn(move || {
+            db.worker_thread();
+        });
+
+        let kind = Kind::BulkQuery;
+        let trans = Trans::ID(4);
+        let (comm_tx, rx) = mpsc::channel::<Reply>();
+        let comm = Comm::new(kind, trans, comm_tx);
+        let reply = Reply::Int(4);
+
+        worker_tx.send(comm).unwrap();
+
+        let get = rx.recv().unwrap();
     }
 }
