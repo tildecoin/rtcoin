@@ -8,9 +8,12 @@ use std::{
     fs, 
     os::unix::net::UnixListener, 
     path::Path, 
+    process,
     sync::mpsc, 
     thread,
 };
+
+use ctrlc;
 
 mod conn;
 mod crypt;
@@ -32,6 +35,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     if fs::metadata(sock).is_ok() {
         fs::remove_file(sock)?;
     }
+
+    // Handle SIGINT / ^C
+    ctrlc::set_handler(move || {
+        eprintln!(" Caught. Cleaning up ...");
+        if fs::metadata(sock).is_ok() {
+            fs::remove_file(sock).unwrap();
+        }
+        std::process::exit(0);
+    }).expect("SIGINT handler setup failure");
 
     // Bind to the socket. Spawn a new connection 
     // handler thread for each client connection.
