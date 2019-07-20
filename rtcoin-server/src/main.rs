@@ -8,7 +8,7 @@ use std::{
     fs, 
     os::unix::net::UnixListener, 
     path::Path, 
-    process,
+    process, 
     sync::mpsc, 
     thread,
 };
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Connect to the ledger database. Will create the DB
     // if it doesn't already exist.
     let (tx, rx) = mpsc::channel::<db::Comm>();
-    
+
     // Spawn the ledger worker to listen for query requests.
     spawn_ledger_worker_with_receiver(rx)?;
 
@@ -42,10 +42,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         if fs::metadata(sock).is_ok() {
             fs::remove_file(sock).unwrap();
         }
-        std::process::exit(0);
-    }).expect("SIGINT handler setup failure");
+        process::exit(0);
+    })
+    .expect("SIGINT handler setup failure");
 
-    // Bind to the socket. Spawn a new connection 
+    // Bind to the socket. Spawn a new connection
     // handler thread for each client connection.
     spawn_for_connections(&sock, tx);
 
@@ -68,18 +69,21 @@ fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) -> Result<(),
 }
 
 fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
-    let lstnr = UnixListener::bind(sock).expect(&format!(
-        "Could not bind to socket: {}",
-        sock.to_str().unwrap()
-    ));
+    let lstnr = UnixListener::bind(sock).unwrap_or_else(|_|{
+        panic!("Could not bind to socket: {}",
+        sock.to_str().unwrap())
+
+    });
 
     while let Ok((conn, addr)) = lstnr.accept() {
         let trx = tx.clone();
         let new_conn = thread::Builder::new();
         let name = conn::addr(&addr);
         let new_conn = new_conn.name(name);
-        new_conn.spawn(move || {
-            conn::init(conn, trx);
-        }).unwrap();
+        new_conn
+            .spawn(move || {
+                conn::init(conn, trx);
+            })
+            .unwrap();
     }
 }

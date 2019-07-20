@@ -20,9 +20,6 @@ use crate::db;
 // First handler for each new connection.
 pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     let stream = BufReader::new(conn);
-    for line in stream.lines() {
-        println!("{}", line.unwrap());
-    }
 
     let (tx, rx) = mpsc::channel::<db::Reply>();
     pipe.send(db::Comm::new(
@@ -40,12 +37,13 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
         }
     };
 
-    if let None = resp {
+    if resp.is_none() {
         eprintln!("Closing connection");
-        return;
     } else if let Some(val) = resp {
         println!("{:#?}", val);
     }
+
+    stream.lines().next();
 }
 
 // Grabs the connection's peer address. Used to
@@ -60,7 +58,7 @@ pub fn addr(addr: &SocketAddr) -> String {
         };
     };
 
-    return String::from("Unknown Thread");
+    String::from("Unknown Thread")
 }
 
 #[cfg(test)]

@@ -4,8 +4,7 @@
 //
 
 use std::{
-    error::Error, 
-    fs,
+    error::Error,
     path::Path, 
     sync::mpsc,
 };
@@ -228,13 +227,13 @@ mod test {
     use super::*;
 
     use std::{
+        fs,
         thread,
     };
 
     #[test]
     fn worker_thread_spawn_send_recv_serialize_rows() {
         let path = "./test-db";
-        let conn = Connection::open(path).unwrap();
         let (worker_tx, pipe) = mpsc::channel::<Comm>();
         let mut db = DB::connect(path, pipe);
 
@@ -248,11 +247,13 @@ mod test {
         let trans = Trans::ID(4);
         let (comm_tx, rx) = mpsc::channel::<Reply>();
         let comm = Comm::new(kind, trans, comm_tx);
-        let reply = Reply::Int(4);
 
         worker_tx.send(comm).unwrap();
 
-        let get = rx.recv().unwrap();
+        // the worker passes the comm packet to bulk_query(),
+        // which hands it off to serialize_rows() before sending
+        // it back down the channel to be received here.
+        rx.recv().unwrap();
 
         if fs::metadata(path).is_ok() {
             fs::remove_file(path).unwrap();
