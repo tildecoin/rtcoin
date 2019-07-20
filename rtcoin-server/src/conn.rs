@@ -21,7 +21,7 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender::<db::Comm>) {
 
     let (tx, rx) = mpsc::channel::<db::Reply>();
     pipe.send(
-        db::Comm::new(db::Trans::Destination("Henlo".into()), tx)
+        db::Comm::new(db::Kind::BulkQuery, db::Trans::Destination("Henlo".into()), tx)
     ).unwrap();
 
     let resp: Option<db::Reply> = match rx.recv() {

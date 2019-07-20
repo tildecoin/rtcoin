@@ -24,7 +24,7 @@ use db::{
 
 fn main() -> Result<(), Box<dyn Error>> {
     let (tx, rx) = mpsc::channel::<db::Comm>();
-    let ledger = DB::connect("/etc/rtcoin/ledger.db", rx);
+    let mut ledger = DB::connect("/etc/rtcoin/ledger.db", rx);
 
     let ledger_worker = thread::Builder::new();
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
@@ -33,7 +33,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         if let Err(err) = ledger.worker_thread() {
             eprintln!("Ledger Worker Error: {}", err);
         };
-
         ledger.conn.close().unwrap();
     })?;
 
@@ -56,7 +55,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                     conn::init(stream, tx);
                 });
             }
-            
             Err(err) => {
                 eprintln!("Connection error: {}", err);
             }

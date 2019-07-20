@@ -4,6 +4,7 @@
 //
 
 use std::{
+    error::Error,
     path::Path,
     sync::mpsc,
 };
@@ -27,13 +28,16 @@ pub struct DB {
 // intended for the database worker thread.
 // Includes an outbound channel for the response.
 pub struct Comm {
+    kind: Kind,
     trans: Trans,
     origin: mpsc::Sender::<Reply>,
 }
 
 // This identifies what should be queried for.
 // The assumption is that several rows will be
-// expected by the caller.
+// expected by the caller. The enumerated
+// transaction types are subject to change as
+// the design progresses.
 pub enum Trans {
     ID(u32),
     TransactionType(String),
@@ -41,9 +45,18 @@ pub enum Trans {
     Source(String),
     Destination(String),
     Amount(f64),
-    LedgerHash(Vec<u8>),
+    LedgerHash(String),
     ReceiptID(u32),
-    ReceiptHash(Vec<u8>),
+    ReceiptHash(String),
+}
+
+pub enum Kind {
+    BulkQuery,
+    BulkInsert,
+    BulkUpdate,
+    SingleQuery,
+    SingleInsert,
+    SingleUpdate,
 }
 
 // Response data to the Trans enum above.
@@ -51,7 +64,8 @@ pub enum Reply {
     Int(u32),
     F64(f64),
     Text(String),
-    Data(Vec<u8>),
+    Data(String),
+    Rows(Vec<LedgerEntry>),
 }
 
 // Each row in the ledger table is serialized
@@ -69,8 +83,9 @@ pub struct LedgerEntry {
 }
 
 impl Comm {
-    pub fn new(trans: Trans, origin: mpsc::Sender::<Reply>) -> Comm {
+    pub fn new(kind: Kind, trans: Trans, origin: mpsc::Sender::<Reply>) -> Comm {
         Comm {
+            kind,
             trans,
             origin,
         }
@@ -97,9 +112,9 @@ impl DB {
                 source          TEXT, 
                 destination     TEXT, 
                 amount          REAL, 
-                ledger_hash     BLOB, 
+                ledger_hash     TEXT, 
                 receipt_id      INTEGER, 
-                receipt_hash    BLOB
+                receipt_hash    TEXT
                 )",
             NO_PARAMS,
             )
@@ -111,9 +126,12 @@ impl DB {
         }
     }
 
-    pub fn worker_thread(&self) -> Result<(), String> {
+    pub fn worker_thread(&mut self) -> Result<(), Box<dyn Error>> {
         for comm in self.pipe.recv() {
-            run_transaction(comm)?;         
+            match comm.kind {
+                Kind::BulkQuery => bulk_query(&mut self.conn, comm)?,
+                _ => bulk_query(&mut self.conn, comm)?,
+            }
         } 
         Ok(())
     }
@@ -124,26 +142,9 @@ impl DB {
             user, 
             user,
             );
-        let mut stmt = self.conn.prepare(&stmt)?;
 
-        let rows = stmt.query_map(NO_PARAMS, |row| {
-          Ok(LedgerEntry {
-            id: row.get(0)?,
-            transaction_type: row.get(1)?,
-            timestamp: row.get(2)?,
-            source: row.get(3)?,
-            destination: row.get(4)?,
-            amount: row.get(5)?,
-            ledger_hash: row.get(6)?,
-            receipt_id: row.get(7)?,
-            receipt_hash: row.get(8)?,
-          })  
-        })?;
-        
-        let mut out: Vec<LedgerEntry> = Vec::new();
-        for row in rows {
-            out.push(row?);
-        }
+        let stmt = self.conn.prepare(&stmt)?;
+        let out = serialize_rows(stmt).unwrap();
         
         Ok(out)
     }
@@ -159,12 +160,55 @@ impl DB {
     }
 }
 
-fn run_transaction(comm: Comm) -> Result<(), String>{
-    // I meant to get to this and got sidetracked.
-    // At least the communication between client
-    // connections and the database/ledger is much
-    // cleaner!
+fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
+    let trans_info = comm.trans;
+    let mut stmt = "SELECT * WHERE ".to_string();
+    match trans_info {
+        Trans::ID(n) => stmt.push_str(&format!("id = {}", n)),
+        Trans::TransactionType(n) => stmt.push_str(&format!("type = {}", n)),
+        Trans::Timestamp(n) => stmt.push_str(&format!("timestamp = {}", n)),
+        Trans::Source(n) => stmt.push_str(&format!("source = {}", n)),
+        Trans::Destination(n) => stmt.push_str(&format!("destination = {}", n)),
+        Trans::Amount(n) => stmt.push_str(&format!("amount = {}", n)),
+        Trans::LedgerHash(n) => stmt.push_str(&format!("ledger_hash = {}", n)),
+        Trans::ReceiptID(n) => stmt.push_str(&format!("receipt_id = {}", n)),
+        Trans::ReceiptHash(n) => stmt.push_str(&format!("receipt_hash = {}", n)),
+    }
+    let src_channel = comm.origin;
+    let txn = db.transaction()?;
+    let stmt = txn.prepare(&stmt)?;
+
+    let out = serialize_rows(stmt)?;
+    src_channel.send(Reply::Rows(out))?;
+
     Ok(())
+}
+
+// Serializes the rows returned from a query into
+// a Vec of the LedgerEntry struct.
+fn serialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
+    let mut stmt = stmt;
+    let rows = stmt.query_map(NO_PARAMS, |row| {
+        Ok(LedgerEntry {
+            id: row.get(0)?,
+            transaction_type: row.get(1)?,
+            timestamp: row.get(2)?,
+            source: row.get(3)?,
+            destination: row.get(4)?,
+            amount: row.get(5)?,
+            ledger_hash: row.get(6)?,
+            receipt_id: row.get(7)?,
+            receipt_hash: row.get(8)?,
+        })  
+    })?;
+
+    let mut out: Vec<LedgerEntry> = Vec::new();
+
+    for row in rows {
+        out.push(row?);
+    }
+
+    Ok(out)
 }
 
 #[cfg(test)]
