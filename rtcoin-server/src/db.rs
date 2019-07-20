@@ -50,6 +50,8 @@ pub enum Trans {
     ReceiptHash(String),
 }
 
+// Type of transaction we're doing with the
+// database.
 pub enum Kind {
     BulkQuery,
     BulkInsert,
@@ -64,7 +66,6 @@ pub enum Reply {
     Int(u32),
     F64(f64),
     Text(String),
-    Data(String),
     Rows(Vec<LedgerEntry>),
 }
 
@@ -77,9 +78,9 @@ pub struct LedgerEntry {
     pub source: String,
     pub destination: String,
     pub amount: f64,
-    pub ledger_hash: Vec<u8>,
+    pub ledger_hash: String,
     pub receipt_id: u32,
-    pub receipt_hash: Vec<u8>,
+    pub receipt_hash: String,
 }
 
 impl Comm {
@@ -163,6 +164,7 @@ impl DB {
 fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
     let trans_info = comm.trans;
     let mut stmt = "SELECT * WHERE ".to_string();
+    
     match trans_info {
         Trans::ID(n) => stmt.push_str(&format!("id = {}", n)),
         Trans::TransactionType(n) => stmt.push_str(&format!("type = {}", n)),
@@ -174,6 +176,7 @@ fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
         Trans::ReceiptID(n) => stmt.push_str(&format!("receipt_id = {}", n)),
         Trans::ReceiptHash(n) => stmt.push_str(&format!("receipt_hash = {}", n)),
     }
+
     let src_channel = comm.origin;
     let txn = db.transaction()?;
     let stmt = txn.prepare(&stmt)?;
