@@ -139,21 +139,25 @@ impl DB {
 
     // Continually read from the channel to
     // process the incoming Comms.
-    pub fn worker_thread(&mut self) -> Result<(), Box<dyn Error>> {
-        for comm in self.pipe.recv() {
+    pub fn worker_thread(&mut self) {
+        while let Ok(comm) = self.pipe.recv() {
             match comm.kind {
-                Kind::BulkQuery => bulk_query(&mut self.conn, comm)?,
-                _ => bulk_query(&mut self.conn, comm)?,
+                Kind::BulkQuery => {
+                    match bulk_query(&mut self.conn, comm) {
+                        Ok(_) => continue,
+                        Err(n) => eprintln!("{}", n),
+                    }
+                },
+                _ => continue,
             }
         } 
-        Ok(())
     }
 
     // Return the rows associated with a single
     // user, receiving and sending entries.
     pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
         let stmt = format!(
-            "SELECT * FROM ledger WHERE (destination = {} OR source = {})", 
+            "SELECT * FROM ledger WHERE (destination = '{}' OR source = '{}')", 
             user, 
             user,
             );
@@ -179,20 +183,21 @@ impl DB {
 // a single row returned by this query.
 fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
     let trans_info = comm.trans;
-    let mut stmt = "SELECT * WHERE ".to_string();
+    let mut stmt = "SELECT * FROM ledger WHERE ".to_string();
     
     match trans_info {
-        Trans::ID(n) => stmt.push_str(&format!("id = {}", n)),
-        Trans::TransactionType(n) => stmt.push_str(&format!("type = {}", n)),
-        Trans::Timestamp(n) => stmt.push_str(&format!("timestamp = {}", n)),
-        Trans::Source(n) => stmt.push_str(&format!("source = {}", n)),
-        Trans::Destination(n) => stmt.push_str(&format!("destination = {}", n)),
-        Trans::Amount(n) => stmt.push_str(&format!("amount = {}", n)),
-        Trans::LedgerHash(n) => stmt.push_str(&format!("ledger_hash = {}", n)),
-        Trans::ReceiptID(n) => stmt.push_str(&format!("receipt_id = {}", n)),
-        Trans::ReceiptHash(n) => stmt.push_str(&format!("receipt_hash = {}", n)),
+        Trans::ID(n) => stmt.push_str(&format!("id = '{}'", n)),
+        Trans::TransactionType(n) => stmt.push_str(&format!("type = '{}'", n)),
+        Trans::Timestamp(n) => stmt.push_str(&format!("timestamp = '{}'", n)),
+        Trans::Source(n) => stmt.push_str(&format!("source = '{}'", n)),
+        Trans::Destination(n) => stmt.push_str(&format!("destination = '{}'", n)),
+        Trans::Amount(n) => stmt.push_str(&format!("amount = '{}'", n)),
+        Trans::LedgerHash(n) => stmt.push_str(&format!("ledger_hash = '{}'", n)),
+        Trans::ReceiptID(n) => stmt.push_str(&format!("receipt_id = '{}'", n)),
+        Trans::ReceiptHash(n) => stmt.push_str(&format!("receipt_hash = '{}'", n)),
     }
 
+    eprintln!("{}", stmt);
     let src_channel = comm.origin;
     let txn = db.transaction()?;
     let stmt = txn.prepare(&stmt)?;

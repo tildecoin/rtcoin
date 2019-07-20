@@ -4,9 +4,14 @@
 //
 
 use std::{
+    error::Error,
     io::BufRead,
     io::BufReader,
-    os::unix::net::UnixStream,
+    os::unix::net::{
+        SocketAddr,
+        UnixStream,
+    },
+    path::Path,
     sync::mpsc,
 };
 
@@ -42,4 +47,19 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender::<db::Comm>) {
     } else if let Some(val) = resp {
         println!("{:#?}", val);
     }
+}
+
+// Grabs the connection's peer address. Used to
+// name the thread spawned for the connection
+// so we can better pinpoint which thread caused
+// a given problem during debugging.
+pub fn addr(addr: &SocketAddr) -> String {
+    if let Some(n) = addr.as_pathname() {
+        let path = n;
+        if let Some(n) = path.to_str() {
+            return n.to_string()
+        };
+    };
+
+    return String::from("Unknown Thread")
 }
