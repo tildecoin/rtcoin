@@ -65,6 +65,7 @@ pub enum Kind {
     SingleQuery,
     SingleInsert,
     SingleUpdate,
+    Disconnect,
 }
 
 // Response data to the Trans enum above.
@@ -149,6 +150,7 @@ impl DB {
                     Ok(_) => continue,
                     Err(n) => eprintln!("{}", n),
                 },
+                Kind::Disconnect => drop(&self.pipe),
                 _ => continue,
             }
         }

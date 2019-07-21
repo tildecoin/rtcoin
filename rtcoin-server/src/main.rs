@@ -11,6 +11,7 @@ use std::{
     process, 
     sync::mpsc, 
     thread,
+    time,
 };
 
 use ctrlc;
@@ -28,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx, rx) = mpsc::channel::<db::Comm>();
 
     // Spawn the ledger worker to listen for query requests.
-    spawn_ledger_worker_with_receiver(rx)?;
+    thread::spawn(|| spawn_ledger_worker_with_receiver(rx));
 
     // If the socket exists already, remove it.
     let sock = Path::new("local/rtcoin-serv.sock");
@@ -37,11 +38,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Handle SIGINT / ^C
+    let sigint_tx = tx.clone();
     ctrlc::set_handler(move || {
         eprintln!(" Caught. Cleaning up ...");
         if fs::metadata(sock).is_ok() {
             fs::remove_file(sock).unwrap();
         }
+
+        let (useless_channel, _) = mpsc::channel::<db::Reply>();
+        sigint_tx.send(db::Comm::new(
+            db::Kind::Disconnect,
+            db::Trans::ID(0),
+            useless_channel
+        ))
+        .expect("Failed to send disconnect comm to ledger worker");
+        
+        // Give the database a bit to close
+        thread::sleep(time::Duration::from_millis(100));
         process::exit(0);
     })
     .expect("SIGINT handler setup failure");
@@ -55,17 +68,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) -> Result<(), Box<dyn Error>> {
+fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) {
     let mut ledger = DB::connect(db::PATH, rx);
 
     let ledger_worker = thread::Builder::new();
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
 
-    ledger_worker.spawn(move || {
+    let wait = ledger_worker.spawn(move || {
         ledger.worker_thread();
-    })?;
+        ledger.conn.close().unwrap();
+    })
+    .expect("Ledger worker failed to spawn");
 
-    Ok(())
+    wait.join().unwrap();
+    process::exit(0);
 }
 
 fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
