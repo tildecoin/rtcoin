@@ -14,17 +14,28 @@ use std::{
     fs,
 };
 
-use aes_soft::Aes256;
-use block_modes::{
-    BlockMode, 
-    block_padding::Pkcs7,
-    Cbc,
-};
-
 use hmac::{
     Hmac, 
     Mac,
 };
+
+use rand::{
+    RngCore,
+    rngs::OsRng,
+};
+
+use crypto::{
+    aes,
+    blockmodes,
+    buffer,
+    buffer::{
+        ReadBuffer,
+        WriteBuffer,
+        BufferResult,
+    },
+    symmetriccipher,
+};
+
 use sha2::Sha256;
 
 use crate::{
@@ -32,29 +43,56 @@ use crate::{
     db::DB,
 };
 
-type Aes256Cbc = Cbc<Aes256, Pkcs7>;
-pub fn crypt() {
-    let key = b"000102030405060708090a0b0c0d0e0f";
-    let iv = b"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
-
+pub fn crypt(key: &[u8], iv: &[u8]) {
     let db = fs::read(db::PATH).unwrap();
-    // encrypt
-    let cipher = Aes256Cbc::new_var(&key[..], &iv[..]).unwrap();
-    let ciphertext = cipher.encrypt_vec(&db);
 
-    fs::write(db::PATH, &ciphertext).unwrap();
+    let mut encryptor = aes::cbc_encryptor(
+        aes::KeySize::KeySize256,
+        key,
+        iv,
+        blockmodes::PkcsPadding);
+
+    let mut output = Vec::<u8>::new();
+    let mut read_buf = buffer::RefReadBuffer::new(&db);
+    let mut buf = [0; 4096];
+    let mut write_buf = buffer::RefWriteBuffer::new(&mut buf);
+
+    loop {
+        let res = encryptor.encrypt(&mut read_buf, &mut write_buf, true).unwrap();
+        output.extend(write_buf.take_read_buffer().take_remaining().iter().map(|&i| i));
+        match res {
+            BufferResult::BufferUnderflow => break,
+            BufferResult::BufferOverflow => { }
+        }
+    }
+    
+    fs::write(db::PATH, &output).unwrap();
 }
 
-pub fn decrypt() {
-    let key = b"000102030405060708090a0b0c0d0e0f";
-    let iv = b"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
-
+pub fn decrypt(key: &[u8], iv: &[u8]) {
     let db = fs::read(db::PATH).unwrap();
 
-    let cipher = Aes256Cbc::new_var(&key[..], &iv[..]).unwrap();
-    let db = cipher.decrypt_vec(&db).unwrap();
+    let mut decryptor = aes::cbc_decryptor(
+        aes::KeySize::KeySize256,
+        key,
+        iv,
+        blockmodes::PkcsPadding);
 
-    fs::write(db::PATH, &db).unwrap();
+    let mut output = Vec::<u8>::new();
+    let mut read_buf = buffer::RefReadBuffer::new(&db);
+    let mut buf = [0; 4096];
+    let mut write_buf = buffer::RefWriteBuffer::new(&mut buf);
+
+    loop {
+        let res = decryptor.decrypt(&mut read_buf, &mut write_buf, true).unwrap();
+        output.extend(write_buf.take_read_buffer().take_remaining().iter().map(|&i| i));
+        match res {
+            BufferResult::BufferUnderflow => break,
+            BufferResult::BufferOverflow => { }
+        }
+    }
+
+    fs::write(db::PATH, &output).unwrap();
 }
 
 type HmacSha256 = Hmac<Sha256>;
@@ -79,12 +117,16 @@ mod test {
     use super::*;
 
     #[test]
-    #[ignore]
     fn encryption_decryption() {
-        let before = fs::read("../local/rtcoinledger.db").unwrap();
-        crypt();
-        decrypt();
-        let after = fs::read("../local/rtcoinledger.db").unwrap();
+        let mut key: [u8; 32] = [0; 32];
+        let mut iv: [u8; 16] = [0; 16];
+        OsRng.fill_bytes(&mut key);
+        OsRng.fill_bytes(&mut iv);
+
+        let before = fs::read(db::PATH).unwrap();
+        crypt(&key, &iv);
+        decrypt(&key, &iv);
+        let after = fs::read(db::PATH).unwrap();
 
         assert_eq!(before, after);
     }

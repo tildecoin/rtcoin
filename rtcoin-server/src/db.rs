@@ -17,7 +17,7 @@ use rusqlite::{
 
 use crate::crypt::*;
 
-pub const PATH: &str = "local/rtcoinledger.db";
+pub const PATH: &str = "/tmp/rtcoinledger.db";
 
 // Wrapper for the database connection and the
 // communication channel.
