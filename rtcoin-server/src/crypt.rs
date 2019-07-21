@@ -43,16 +43,25 @@ pub fn crypt() {
     let ciphertext = cipher.encrypt_vec(&db);
 
     fs::write(db::PATH, &ciphertext).unwrap();
-    // now to decrypt
-    //let cipher = Aes256Cbc::new_var(&key, &iv).unwrap();
-    //let text = cipher.decrypt_vec(&ciphertext).unwrap();
+}
+
+pub fn decrypt() {
+    let key = b"000102030405060708090a0b0c0d0e0f";
+    let iv = b"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
+
+    let db = fs::read(db::PATH).unwrap();
+
+    let cipher = Aes256Cbc::new_var(&key[..], &iv[..]).unwrap();
+    let db = cipher.decrypt_vec(&db).unwrap();
+
+    fs::write(db::PATH, &db).unwrap();
 }
 
 type HmacSha256 = Hmac<Sha256>;
 pub fn auth() {
     let mut mac = HmacSha256::new_varkey(b"dog feet").expect("Something went wrong");
 
-    mac.input(b"I have a secret about dog feet");
+    mac.input(b"dog feet smell like tortilla chips");
 
     // constant time equality check
     let res = mac.result();
@@ -63,4 +72,20 @@ pub fn auth() {
     mac.input(b"some message");
 
     //mac.verify(&code_bytes).unwrap();
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn encryption_decryption() {
+        let before = fs::read("../local/rtcoinledger.db").unwrap();
+        crypt();
+        decrypt();
+        let after = fs::read("../local/rtcoinledger.db").unwrap();
+
+        assert_eq!(before, after);
+    }
 }
