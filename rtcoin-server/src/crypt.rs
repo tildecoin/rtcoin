@@ -10,6 +10,10 @@
 // this. I'll handle this once I get the rest of the
 // database's interaction sorted.
 
+use std::{
+    fs,
+};
+
 use aes_soft::Aes256;
 use block_modes::{
     BlockMode, 
@@ -23,18 +27,22 @@ use hmac::{
 };
 use sha2::Sha256;
 
-use crate::db::DB;
+use crate::{
+    db,
+    db::DB,
+};
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 pub fn crypt() {
-    let key = vec!["000102030405060708090a0b0c0d0e0f"];
-    let iv = vec!["f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"];
-    let text = b"Dog feet smell like tortilla chips";
+    let key = b"000102030405060708090a0b0c0d0e0f";
+    let iv = b"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
 
+    let db = fs::read(db::PATH).unwrap();
     // encrypt
-    //let cipher = Aes256Cbc::new_varkey(&key).unwrap();
-    //let ciphertext = cipher.encrypt_vec(text);
+    let cipher = Aes256Cbc::new_var(&key[..], &iv[..]).unwrap();
+    let ciphertext = cipher.encrypt_vec(&db);
 
+    fs::write(db::PATH, &ciphertext).unwrap();
     // now to decrypt
     //let cipher = Aes256Cbc::new_var(&key, &iv).unwrap();
     //let text = cipher.decrypt_vec(&ciphertext).unwrap();

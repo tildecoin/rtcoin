@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) -> Result<(), Box<dyn Error>> {
-    let mut ledger = DB::connect("local/rtcoinledger.db", rx);
+    let mut ledger = DB::connect(db::PATH, rx);
 
     let ledger_worker = thread::Builder::new();
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
