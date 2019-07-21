@@ -124,8 +124,14 @@ mod test {
         let mut iv: [u8; 16] = [0; 16];
         OsRng.fill_bytes(&mut key);
         OsRng.fill_bytes(&mut iv);
+        
+        let mut data: [u8; 32] = [0; 32];
+        if fs::metadata(db::PATH).is_err() {
+            OsRng.fill_bytes(&mut data);
+            fs::write(db::PATH, &data).unwrap();
+        }
 
-        let before = fs::read(db::PATH).unwrap();
+        let before = fs::read(db::PATH).unwrap_or(data.to_vec());
         crypt(&key, &iv);
         decrypt(&key, &iv);
         let after = fs::read(db::PATH).unwrap();
