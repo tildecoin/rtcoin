@@ -24,3 +24,7 @@ be what users interact with to display their balances, transfer `tildecoin` to o
 * MIT Licensed
 * Contributions welcome!
 * Draft RFC: [tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md](https://tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md)
+
+### Current Build Dependencies
+
+* libsqlcipher-dev
