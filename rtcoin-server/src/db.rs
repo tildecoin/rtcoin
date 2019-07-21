@@ -174,10 +174,9 @@ impl DB {
 // Returns a vector of LedgerEntry structs, each representing
 // a single row returned by this query.
 fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
-    let trans_info = comm.trans;
     let mut stmt = "SELECT * FROM ledger WHERE ".to_string();
 
-    match trans_info {
+    match comm.trans {
         Trans::ID(n) => stmt.push_str(&format!("id = '{}'", n)),
         Trans::TransactionType(n) => stmt.push_str(&format!("type = '{}'", n)),
         Trans::Timestamp(n) => stmt.push_str(&format!("timestamp = '{}'", n)),
@@ -189,12 +188,11 @@ fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
         Trans::ReceiptHash(n) => stmt.push_str(&format!("receipt_hash = '{}'", n)),
     }
 
-    let src_channel = comm.origin;
     let txn = db.transaction()?;
     let stmt = txn.prepare(&stmt)?;
 
     let out = serialize_rows(stmt)?;
-    src_channel.send(Reply::Rows(out))?;
+    comm.origin.send(Reply::Rows(out))?;
 
     Ok(())
 }
