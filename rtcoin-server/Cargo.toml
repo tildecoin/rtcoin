@@ -14,4 +14,8 @@ hmac = "0.7"
 #simplelog = "0.6"
 ryu = "1.0"
 sha2 = "0.8"
-rusqlite = "0.19"
+
+[dependencies.rusqlite]
+version = "0.19"
+default-features = true
+features = ["sqlcipher"]
