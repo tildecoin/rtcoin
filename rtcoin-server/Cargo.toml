@@ -14,6 +14,7 @@ rand = "0.7"
 rust-crypto = "0.2"
 ryu = "1.0"
 sha2 = "0.8"
+zeroize = "0.9"
 
 [dependencies.rusqlite]
 version = "0.19"

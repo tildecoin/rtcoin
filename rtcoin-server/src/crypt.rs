@@ -38,6 +38,8 @@ use crypto::{
 
 use sha2::Sha256;
 
+use zeroize::Zeroize;
+
 use crate::{
     db,
     db::DB,
@@ -128,6 +130,8 @@ mod test {
         decrypt(&key, &iv);
         let after = fs::read(db::PATH).unwrap();
 
+        key.zeroize();
+        iv.zeroize();
         assert_eq!(before, after);
     }
 }
