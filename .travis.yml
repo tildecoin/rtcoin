@@ -18,6 +18,8 @@ addons:
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
+      - libsqlcipher-dev
+      - libsqlcipher0
       - cmake
       - gcc
       - binutils-dev
