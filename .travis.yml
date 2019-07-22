@@ -13,7 +13,6 @@ dist: xenial
 addons:
   apt:
     packages:
-      - libclang-common-7-dev
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
