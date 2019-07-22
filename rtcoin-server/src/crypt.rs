@@ -45,8 +45,8 @@ use crate::{
     db::DB,
 };
 
-pub fn crypt(key: &[u8], iv: &[u8]) {
-    let db = fs::read(db::PATH).unwrap();
+pub fn crypt(key: &[u8], iv: &[u8], db_path: &str) {
+    let db = fs::read(db_path).unwrap();
 
     let mut encryptor = aes::cbc_encryptor(
         aes::KeySize::KeySize256,
@@ -68,11 +68,11 @@ pub fn crypt(key: &[u8], iv: &[u8]) {
         }
     }
     
-    fs::write(db::PATH, &output).unwrap();
+    fs::write(db_path, &output).unwrap();
 }
 
-pub fn decrypt(key: &[u8], iv: &[u8]) {
-    let db = fs::read(db::PATH).unwrap();
+pub fn decrypt(key: &[u8], iv: &[u8], db_path: &str) {
+    let db = fs::read(db_path).unwrap();
 
     let mut decryptor = aes::cbc_decryptor(
         aes::KeySize::KeySize256,
@@ -94,7 +94,7 @@ pub fn decrypt(key: &[u8], iv: &[u8]) {
         }
     }
 
-    fs::write(db::PATH, &output).unwrap();
+    fs::write(db_path, &output).unwrap();
 }
 
 /*
@@ -134,8 +134,8 @@ mod test {
         }
 
         let before = fs::read(TESTDBPATH).unwrap_or(data.to_vec());
-        crypt(&key, &iv);
-        decrypt(&key, &iv);
+        crypt(&key, &iv, TESTDBPATH);
+        decrypt(&key, &iv, TESTDBPATH);
         let after = fs::read(TESTDBPATH).unwrap();
 
         key.zeroize();
