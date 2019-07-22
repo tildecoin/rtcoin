@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .expect("Failed to send disconnect comm to ledger worker");
         
         // Give the database a bit to close
-        thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(50));
         process::exit(0);
     })
     .expect("SIGINT handler setup failure");
