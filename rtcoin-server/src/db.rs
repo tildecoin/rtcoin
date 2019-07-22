@@ -16,8 +16,6 @@ use rusqlite::{
     NO_PARAMS,
 };
 
-use crate::crypt::*;
-
 pub const PATH: &str = "/tmp/rtcoinledger.db";
 
 // Wrapper for the database connection and the

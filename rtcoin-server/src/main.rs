@@ -17,7 +17,6 @@ use std::{
 use ctrlc;
 
 mod conn;
-mod crypt;
 mod db;
 mod user;
 
