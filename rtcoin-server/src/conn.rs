@@ -54,6 +54,18 @@ impl ErrorResp {
     pub fn add_context(&mut self, msg: &str) {
         self.context = msg.to_string();
     }
+
+    pub fn code(&self) -> u32 {
+        self.code
+    }
+
+    pub fn details(&self) -> String {
+        self.details.clone()
+    }
+
+    pub fn context(&self) -> String {
+        self.context.clone()
+    }
 }
 
 // First handler for each new connection.
@@ -69,14 +81,20 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     
     let json_in: Value = match serde_json::from_str(&json_in) {
         Ok(val) => val,
-        Err(err) => {
-            let err = format!("{}", err);
-            
+        Err(err) => {            
             let mut out = ErrorResp::new(1, "Could not parse request as JSON");
             out.add_context("conn.rs#L75");
-            let out = out.to_bytes();
 
+            eprintln!(
+                "\nError {}:\n{}\n{}", 
+                out.code(), 
+                out.context(), 
+                out.details(),
+            );
+            
+            let out = out.to_bytes();
             conn.write(&out).unwrap();
+
             return
         }
     };
@@ -247,5 +265,16 @@ mod test {
         if fs::metadata(sock_path).is_ok() {
             fs::remove_file(sock_path).unwrap();
         }
+    }
+
+    #[test]
+    fn error_resp() {
+        let out = ErrorResp::new(0, "Test Error");
+        assert_eq!(out.code, 0);
+        assert_eq!(out.details, "Test Error");
+    
+        let mut out = out;
+        out.add_context("Context");
+        assert_eq!(out.context(), "Context");
     }
 }
