@@ -9,6 +9,7 @@ use std::{
 
 use chrono::prelude::*;
 use ryu;
+use serde_json;
 
 use crate::db::DB;
 
@@ -23,6 +24,12 @@ pub struct User {
     balance: f64,
     messages: Vec<String>,
     last_login: chrono::DateTime<Utc>,
+}
+
+#[derive(Debug)]
+pub enum InitCode {
+    Success,
+    Fail(String),
 }
 
 // The std::fmt::Display trait, so a User
@@ -155,6 +162,11 @@ impl User {
 
         Err("Something went wrong".to_string())
     }
+}
+
+pub fn init(json: &serde_json::Value) -> InitCode {
+
+    InitCode::Other(String::from("Unspecified Error"))
 }
 
 #[cfg(test)]

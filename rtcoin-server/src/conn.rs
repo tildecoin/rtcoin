@@ -22,23 +22,24 @@ use serde_json::{
 };
 
 use crate::db;
+use crate::user;
 
 pub const SOCK: &str = "/tmp/rtcoinserver.sock";
 
 // Used for quickly serializing an error into bytes
 // so that it may be sent across the socket. 
 #[derive(Debug)]
-pub struct ErrorResp {
+pub struct MsgResp {
     code: u32,
     details: String,
     context: String,
 }
 
-impl ErrorResp {
-    pub fn new(code: u32, details: &str) -> ErrorResp {
+impl MsgResp {
+    pub fn new(code: u32, details: &str) -> MsgResp {
         let details = details.to_string();
         let context = String::new();
-        ErrorResp {
+        MsgResp {
             code,
             details,
             context,
@@ -79,10 +80,55 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     incoming.read_line(&mut json_in)
         .expect("Error reading client request");
     
-    let json_in: Value = match serde_json::from_str(&json_in) {
-        Ok(val) => val,
+    let json_in: Value = str_to_json(&json_in, &mut conn).unwrap();
+
+    route(&mut conn, &json_in, &pipe);
+
+    conn.bytes().next();
+}
+
+fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) {
+    let mut conn = conn;
+
+    match json_in["user_init"].as_str() {
+        Some(a) => {
+            let resp = match user::init(&json_in) {
+                user::InitCode::Success => MsgResp::new(0, "Success"),
+                user::InitCode::Fail(msg) => MsgResp::new(1, &msg),
+            };
+            let resp = resp.to_bytes();
+            conn.write(&resp)
+                .unwrap();
+            return
+        }
+        None => { },
+    }
+
+    let (tx, rx) = mpsc::channel::<db::Reply>();
+    if let Some(comm) = json_to_comm(&json_in, tx) {
+        eprintln!("\n{:#?}", comm);
+        pipe.send(comm)
+            .unwrap();
+    }
+
+    let resp: Option<db::Reply> = recv(rx.recv(), &mut conn);
+
+    if resp.is_none() {
+        eprintln!("Closing client connection");
+        let out = MsgResp::new(1, "No response from worker. Closing connection.").to_bytes();
+        conn.write_all(&out).unwrap();
+    } else if let Some(val) = resp {
+        let reply = format!("{:#?}", val);
+        conn.write_all(reply.as_bytes()).unwrap();
+    }
+
+}
+
+fn str_to_json(json_in: &str, conn: &mut UnixStream) -> Option<serde_json::Value> {
+    return match serde_json::from_str(&json_in) {
+        Ok(val) => Some(val),
         Err(err) => {            
-            let mut out = ErrorResp::new(1, "Could not parse request as JSON");
+            let mut out = MsgResp::new(1, "Could not parse request as JSON");
             out.add_context("conn.rs#L75");
 
             eprintln!(
@@ -94,24 +140,18 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
             
             let out = out.to_bytes();
             conn.write(&out).unwrap();
-
-            return
+            None
         }
-    };
-
-    let (tx, rx) = mpsc::channel::<db::Reply>();
-    if let Some(comm) = json_to_comm(json_in, tx) {
-        eprintln!("\n{:#?}", comm);
-        pipe.send(comm)
-            .unwrap();
     }
+}
 
-    let resp: Option<db::Reply> = match rx.recv() {
+fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Option<db::Reply> {
+    return match recv {
         Ok(val) => Some(val),
         Err(err) => {
             let err = format!("{}", err);
             
-            let mut out = ErrorResp::new(1, &err);
+            let mut out = MsgResp::new(1, &err);
             out.add_context("conn.rs#L96");
 
             let out = out.to_bytes();
@@ -120,18 +160,7 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
             eprintln!("Error in Ledger Worker Response: {}", err);
             None
         }
-    };
-
-    if resp.is_none() {
-        eprintln!("Closing client connection");
-        let out = ErrorResp::new(1, "\n\nNo response from worker.\nClosing connection.\n").to_bytes();
-        conn.write_all(&out).unwrap();
-    } else if let Some(val) = resp {
-        let reply = format!("{:#?}", val);
-        conn.write_all(reply.as_bytes()).unwrap();
     }
-
-    conn.bytes().next();
 }
 
 // Grabs the connection's peer address. Used to
@@ -153,7 +182,7 @@ pub fn addr(addr: &SocketAddr) -> String {
 // ready for passing to the ledger worker thread.
 // Serialize/Deserialize serde traits apparently
 // don't play well with enums.
-fn json_to_comm(json: Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
+fn json_to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
     let kind: db::Kind = match json["kind"].as_str()? {
         "BulkQuery" => db::Kind::BulkQuery,
         "BulkInsert" => db::Kind::BulkInsert,
@@ -214,7 +243,7 @@ mod test {
         let (tx, _) = mpsc::channel::<db::Reply>();
         let tx2 = tx.clone();
 
-        let case = if let Some(val) = json_to_comm(test_data, tx) {
+        let case = if let Some(val) = json_to_comm(&test_data, tx) {
             val
         } else {
             panic!("json_to_comm() failed: case 1");
@@ -236,7 +265,7 @@ mod test {
             "trans_data": "32",
         });
 
-        let case = if let Some(val) = json_to_comm(test_data, tx2) {
+        let case = if let Some(val) = json_to_comm(&test_data, tx2) {
             val
         } else {
             panic!("json_to_comm() failed: case 2");
@@ -268,8 +297,8 @@ mod test {
     }
 
     #[test]
-    fn error_resp() {
-        let out = ErrorResp::new(0, "Test Error");
+    fn msg_resp() {
+        let out = MsgResp::new(0, "Test Error");
         let code = out.code();
         let details = out.details();
         
