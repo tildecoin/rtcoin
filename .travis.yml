@@ -1,6 +1,8 @@
 language: rust
 
 rust:
+  - stable
+  - beta
   - nightly
 
 os: 
@@ -22,15 +24,21 @@ addons:
       - libiberty-dev
 
 before_install:
-    - curl -L https://github.com/mozilla/grcov/releases/download/v0.4.1/grcov-linux-x86_64.tar.bz2 | tar jxf -
+    - |
+      curl -O https://github.com/mozilla/grcov/releases/download/v0.4.1/grcov-linux-x86_64.tar.bz2
+      tar xjvf grcov-linux-x86_63.tar.bz2
 
 script:
     - export CARGO_INCREMENTAL=0
-    - export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads"
+    - |
+      if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
+        export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads";
+      fi
     - cargo build --verbose $CARGO_OPTIONS
     - cargo test --verbose $CARGO_OPTIONS
     - |
-      zip -0 ccov.zip `find . \( -name "rtcoin*.gc*" \) -print`;
-      ./grcov ccov.zip -s . -t lcov --llvm --branch --ignore-not-existing --ignore-dir "/*" -o lcov.info;
-      bash <(curl -s https://codecov.io/bash) -f lcov.info;
-
+      if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
+        zip -0 ccov.zip `find . \( -name "rtcoin*.gc*" \) -print`;
+        ./grcov ccov.zip -s . -t lcov --llvm --branch --ignore-not-existing --ignore-dir "/*" -o lcov.info;
+        bash <(curl -s https://codecov.io/bash) -f lcov.info;
+      fi
