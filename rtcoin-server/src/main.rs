@@ -5,7 +5,7 @@
 
 use std::{
     error::Error, 
-    fs, 
+    fs,
     os::unix::net::UnixListener, 
     path::Path, 
     process, 
@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || spawn_ledger_worker_with_receiver(rx));
 
     // If the socket exists already, remove it.
-    let sock = Path::new("local/rtcoin-serv.sock");
+    let sock = Path::new(conn::SOCK);
     if fs::metadata(sock).is_ok() {
         fs::remove_file(sock)?;
     }

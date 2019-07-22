@@ -22,6 +22,8 @@ use serde_json::{
 
 use crate::db;
 
+pub const SOCK: &str = "/tmp/rtcoinserver.sock";
+
 // First handler for each new connection.
 pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     let mut stream = BufReader::new(conn);
