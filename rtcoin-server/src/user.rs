@@ -166,7 +166,7 @@ impl User {
 
 pub fn init(json: &serde_json::Value) -> InitCode {
 
-    InitCode::Other(String::from("Unspecified Error"))
+    InitCode::Fail(String::from("Unspecified Error"))
 }
 
 #[cfg(test)]
