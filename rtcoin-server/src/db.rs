@@ -29,6 +29,7 @@ pub struct DB {
 // Represents a single request, or communication,
 // intended for the database worker thread.
 // Includes an outbound channel for the response.
+#[derive(Debug)]
 pub struct Comm {
     kind: Kind,
     trans: Trans,
@@ -40,6 +41,7 @@ pub struct Comm {
 // expected by the caller. The enumerated
 // transaction types are subject to change as
 // the design progresses.
+#[derive(Debug)]
 pub enum Trans {
     ID(u32),
     TransactionType(String),

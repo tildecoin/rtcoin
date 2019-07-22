@@ -4,19 +4,20 @@
 //
 
 use std::{
-    error::Error,
-    io::BufRead,
-    io::BufReader,
+    io::{
+        BufReader,
+        BufRead,
+        Read,
+        Write,
+    },
     os::unix::net::{
         SocketAddr, 
-        UnixStream
+        UnixStream,
     },
-    path::Path,
     sync::mpsc,
 };
 
 use serde_json::{
-    Result,
     Value,
 };
 
@@ -24,18 +25,65 @@ use crate::db;
 
 pub const SOCK: &str = "/tmp/rtcoinserver.sock";
 
+// Used for quickly serializing an error into bytes
+// so that it may be sent across the socket. 
+#[derive(Debug)]
+pub struct ErrorResp {
+    code: u32,
+    details: String,
+    context: String,
+}
+
+impl ErrorResp {
+    pub fn new(code: u32, details: &str) -> ErrorResp {
+        let details = details.to_string();
+        let context = String::new();
+        ErrorResp {
+            code,
+            details,
+            context,
+        }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        format!("{:#?}", self)
+            .as_bytes()
+            .to_owned()
+    }
+
+    pub fn add_context(&mut self, msg: &str) {
+        self.context = msg.to_string();
+    }
+}
+
 // First handler for each new connection.
 pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
-    let mut stream = BufReader::new(conn);
-    let mut json_in: Vec<u8> = Vec::new();
-    stream.read_until("\0".as_bytes()[0], &mut json_in)
+    let mut conn = conn;
+
+    let incoming = conn.try_clone().unwrap();
+    let mut incoming = BufReader::new(incoming);
+
+    let mut json_in = String::new();
+    incoming.read_line(&mut json_in)
         .expect("Error reading client request");
     
-    let json_in = String::from_utf8_lossy(&json_in);
-    let json_in: Value = serde_json::from_str(&json_in).unwrap();
+    let json_in: Value = match serde_json::from_str(&json_in) {
+        Ok(val) => val,
+        Err(err) => {
+            let err = format!("{}", err);
+            
+            let mut out = ErrorResp::new(1, "Could not parse request as JSON");
+            out.add_context("conn.rs#L75");
+            let out = out.to_bytes();
+
+            conn.write(&out).unwrap();
+            return
+        }
+    };
 
     let (tx, rx) = mpsc::channel::<db::Reply>();
     if let Some(comm) = json_to_comm(json_in, tx) {
+        eprintln!("\n{:#?}", comm);
         pipe.send(comm)
             .unwrap();
     }
@@ -43,18 +91,29 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     let resp: Option<db::Reply> = match rx.recv() {
         Ok(val) => Some(val),
         Err(err) => {
+            let err = format!("{}", err);
+            
+            let mut out = ErrorResp::new(1, &err);
+            out.add_context("conn.rs#L96");
+
+            let out = out.to_bytes();
+            conn.write(&out).unwrap();
+
             eprintln!("Error in Ledger Worker Response: {}", err);
             None
         }
     };
 
     if resp.is_none() {
-        eprintln!("Closing connection");
+        eprintln!("Closing client connection");
+        let out = ErrorResp::new(1, "\n\nNo response from worker.\nClosing connection.\n").to_bytes();
+        conn.write_all(&out).unwrap();
     } else if let Some(val) = resp {
-        println!("{:#?}", val);
+        let reply = format!("{:#?}", val);
+        conn.write_all(reply.as_bytes()).unwrap();
     }
 
-    stream.lines().next();
+    conn.bytes().next();
 }
 
 // Grabs the connection's peer address. Used to
@@ -72,6 +131,10 @@ pub fn addr(addr: &SocketAddr) -> String {
     String::from("Unknown Thread")
 }
 
+// Serializes a JSON Value struct into a db::Comm,
+// ready for passing to the ledger worker thread.
+// Serialize/Deserialize serde traits apparently
+// don't play well with enums.
 fn json_to_comm(json: Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
     let kind: db::Kind = match json["kind"].as_str()? {
         "BulkQuery" => db::Kind::BulkQuery,
@@ -85,7 +148,7 @@ fn json_to_comm(json: Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
     
     let tmp = json["trans_data"].as_str()?.to_string();
 
-    let mut trans: db::Trans = match json["trans"].as_str()? {
+    let trans: db::Trans = match json["trans"].as_str()? {
         "ID" => {
             let id = tmp.trim().parse::<u32>().unwrap();
             db::Trans::ID(id)
@@ -117,6 +180,7 @@ mod test {
     use std::{
         fs,
         os::unix::net::UnixListener,
+        path::Path,
     };
 
     use serde_json::json;
@@ -132,26 +196,41 @@ mod test {
         let (tx, _) = mpsc::channel::<db::Reply>();
         let tx2 = tx.clone();
 
-        let lhs = if let Some(val) = json_to_comm(test_data, tx) {
+        let case = if let Some(val) = json_to_comm(test_data, tx) {
             val
         } else {
-            panic!("json_to_comm() failed");
+            panic!("json_to_comm() failed: case 1");
         };
 
-        let _rhs = db::Comm::new(
-            db::Kind::BulkQuery, 
-            db::Trans::Source("Foo Barrington".into()), 
-            tx2,
-        );
-
-        match lhs.kind() {
+        match case.kind() {
             db::Kind::BulkQuery => { },
-            _ => panic!("Incorrect query kind"),
+            _ => panic!("Incorrect Kind: case 1"),
         }
         let _src = "Foo Barrington".to_string();
-        match lhs.trans() {
+        match case.trans() {
             db::Trans::Source(_src) => { },
-            _ => panic!("Incorrect transaction detail"),
+            _ => panic!("Incorrect Trans: case 1"),
+        }
+
+        let test_data = json!({
+            "kind": "SingleQuery",
+            "trans": "ID",
+            "trans_data": "32",
+        });
+
+        let case = if let Some(val) = json_to_comm(test_data, tx2) {
+            val
+        } else {
+            panic!("json_to_comm() failed: case 2");
+        };
+
+        match case.kind() {
+            db::Kind::SingleQuery => { },
+            _ => panic!("Incorrect Kind: case 2"),
+        }
+        match case.trans() {
+            db::Trans::ID(32) => { },
+            _ => panic!("Incorrect Trans: case 2"),
         }
     }
 
