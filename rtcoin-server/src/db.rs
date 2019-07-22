@@ -5,6 +5,7 @@
 
 use std::{
     error::Error,
+    io,
     path::Path, 
     sync::mpsc,
 };
@@ -30,7 +31,6 @@ pub struct DB {
 // Represents a single request, or communication,
 // intended for the database worker thread.
 // Includes an outbound channel for the response.
-#[derive(Debug)]
 pub struct Comm {
     kind: Kind,
     trans: Trans,
@@ -42,7 +42,6 @@ pub struct Comm {
 // expected by the caller. The enumerated
 // transaction types are subject to change as
 // the design progresses.
-#[derive(Debug)]
 pub enum Trans {
     ID(u32),
     TransactionType(String),
@@ -102,6 +101,14 @@ impl Comm {
             origin,
         }
     }
+
+    pub fn kind(&self) -> &Kind {
+        &self.kind
+    }
+
+    pub fn trans(&self) -> &Trans {
+        &self.trans
+    }
 }
 impl DB {
     // Connect to the ledger database, creating it
@@ -150,7 +157,7 @@ impl DB {
                     Ok(_) => continue,
                     Err(n) => eprintln!("{}", n),
                 },
-                Kind::Disconnect => drop(&self.pipe),
+                Kind::Disconnect => return,
                 _ => continue,
             }
         }
@@ -158,7 +165,7 @@ impl DB {
 
     // Return the rows associated with a single
     // user, receiving and sending entries.
-    pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, rusqlite::Error> {
+    pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
         let stmt = format!(
             "SELECT * FROM ledger WHERE (destination = '{}' OR source = '{}')",
             user, user,
@@ -191,7 +198,7 @@ fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
     let txn = db.transaction()?;
     let stmt = txn.prepare(&stmt)?;
 
-    let out = serialize_rows(stmt)?;
+    let out = serialize_rows(stmt).unwrap();
     comm.origin.send(Reply::Rows(out))?;
 
     Ok(())

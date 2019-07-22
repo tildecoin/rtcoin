@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx, rx) = mpsc::channel::<db::Comm>();
 
     // Spawn the ledger worker to listen for query requests.
-    thread::spawn(|| spawn_ledger_worker_with_receiver(rx));
+    thread::spawn(move || spawn_ledger_worker_with_receiver(rx));
 
     // If the socket exists already, remove it.
     let sock = Path::new("local/rtcoin-serv.sock");
@@ -46,12 +46,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         let (useless_channel, _) = mpsc::channel::<db::Reply>();
-        sigint_tx.send(db::Comm::new(
-            db::Kind::Disconnect,
-            db::Trans::ID(0),
-            useless_channel
-        ))
-        .expect("Failed to send disconnect comm to ledger worker");
+        sigint_tx
+            .send(db::Comm::new(
+                db::Kind::Disconnect,
+                db::Trans::ID(0),
+                useless_channel
+            ))
+            .expect("Failed to send disconnect comm to ledger worker");
         
         // Give the database a bit to close
         thread::sleep(time::Duration::from_millis(100));
