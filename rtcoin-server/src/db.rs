@@ -268,4 +268,22 @@ mod test {
             fs::remove_file(path).unwrap();
         }
     }
+
+    #[test]
+    fn comm_kind_and_trans() {
+        let (tx, _) = mpsc::channel::<Reply>();
+        let sometrans = Trans::ID(0);
+        let somekind = Kind::BulkQuery;
+        let comm = Comm::new(somekind, sometrans, tx);
+
+        match comm.trans() {
+            Trans::ID(0) => { },
+            _ => panic!("Incorrect Trans"),
+        }
+
+        match comm.kind() {
+            Kind::BulkQuery => { },
+            _ => panic!("Incorrect Kind"),
+        }
+    }
 }
