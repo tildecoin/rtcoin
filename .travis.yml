@@ -1,7 +1,5 @@
 language: rust
 
-sudo: required
-
 rust:
   - stable
   - beta
@@ -15,6 +13,7 @@ dist: xenial
 addons:
   apt:
     packages:
+      - libclang-common-7-dev
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
@@ -25,10 +24,16 @@ addons:
       - binutils-dev
       - libiberty-dev
 
-after_success: |
-  cargo install cargo-cov
-  cargo cov test
-  cargo cov report
-  bash <(curl -s https://codecov.io/bash) &&
-  echo "Coverage reports successfully uploaded"
+before_install:
+    - curl -L https://github.com/mozilla/grcov/releases/download/v0.4.1/grcov-linux-x86_64.tar.bz2 | tar jxf -
+
+script:
+    - export CARGO_INCREMENTAL=0
+    - export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads"
+    - cargo build --verbose $CARGO_OPTIONS
+    - cargo test --verbose $CARGO_OPTIONS
+    - |
+      zip -0 ccov.zip `find . \( -name "rtcoin*.gc*" \) -print`;
+      ./grcov ccov.zip -s . -t lcov --llvm --branch --ignore-not-existing --ignore-dir "/*" -o lcov.info;
+      bash <(curl -s https://codecov.io/bash) -f lcov.info;
 
