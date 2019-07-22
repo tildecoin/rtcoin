@@ -121,12 +121,14 @@ impl DB {
         db_flags.set(OpenFlags::SQLITE_OPEN_FULL_MUTEX, true);    // Flag to open the database in Serialized mode.
         db_flags.set(OpenFlags::SQLITE_OPEN_PRIVATE_CACHE, true); // Use private cache even if shared is enabled.
                                                                   // See: https://www.sqlite.org/c3ref/open.html
-
         let path = Path::new(path);
         let conn =
             Connection::open_with_flags(path, db_flags)
                 .expect("Could not open ledger connection");
 
+        // This PRAGMA is what either enables
+        // encryption on a new database or allows 
+        // the decryption of an existing database.
         let pragma = format!("PRAGMA key = '{}'", KEY);
         conn.execute(&pragma, NO_PARAMS)
             .expect("Couldn't pass PRAGMA to database");
@@ -142,10 +144,23 @@ impl DB {
                 ledger_hash     TEXT, 
                 receipt_id      INTEGER, 
                 receipt_hash    TEXT
-                )",
+            )",
             NO_PARAMS,
         )
-        .expect("Could not create table");
+        .expect("Could not create ledger table");
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS users (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT,
+                pass        TEXT,
+                balance     REAL,
+                created     TEXT,
+                last_login  TEXT
+            )",
+            NO_PARAMS,
+        )
+        .expect("Could not create users table");
 
         DB { 
             conn, 
@@ -253,15 +268,35 @@ mod test {
 
         assert!(fs::metadata(path).is_ok());
 
-        thread::spawn(move || {
-            db.worker_thread();
-        });
-
         let kind = Kind::BulkQuery;
         let trans = Trans::ID(4);
         let (comm_tx, rx) = mpsc::channel::<Reply>();
+        let tx2 = comm_tx.clone();
         let comm = Comm::new(kind, trans, comm_tx);
 
+        let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
+        let stmt = db.conn.prepare(stmt).unwrap();
+
+        if let Err(_) = serialize_rows(stmt) {
+            panic!("failure in serialize_rows()");
+        }
+        
+        // Above, comm takes ownership of the previous
+        // instances of kind and trans. Need to duplicate
+        // to test bulk_query(). Also, Clone isn't implemented
+        // on db::Comm yet.
+        let kind = Kind::BulkQuery;
+        let trans = Trans::ID(4);
+        let comm2 = Comm::new(kind, trans, tx2);
+
+        if let Err(_) = bulk_query(&mut db.conn, comm2) {
+            panic!("Failure in bulk_query()");
+        }
+
+        thread::spawn(move || {
+            db.worker_thread();
+        });
+        
         worker_tx.send(comm).unwrap();
 
         // the worker passes the comm packet to bulk_query(),
