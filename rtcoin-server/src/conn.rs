@@ -270,11 +270,15 @@ mod test {
     #[test]
     fn error_resp() {
         let out = ErrorResp::new(0, "Test Error");
-        assert_eq!(out.code, 0);
-        assert_eq!(out.details, "Test Error");
+        let code = out.code();
+        let details = out.details();
+        
+        assert_eq!(code, 0);
+        assert_eq!(details, "Test Error");
     
         let mut out = out;
         out.add_context("Context");
-        assert_eq!(out.context(), "Context");
+        let context = out.context();
+        assert_eq!(context, "Context");
     }
 }
