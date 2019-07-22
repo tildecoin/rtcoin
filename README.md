@@ -8,15 +8,6 @@ draft RFC for `tildecoin`, written by [~aewens](https://github.com/aewens), will
 
 This project is in early development. 
 
-## Project Structure
-
-`rtcoin` will use a client-server architecture, per the RFC.
-
-Initial work is being done on [`rtcoin-server`](https://github.com/tildecoin/rtcoin/tree/master/rtcoin-server),
-which will handle connections to clients, client authentication, and manage the ledger as a 
-table in a `SQLite v3` database. Afterwards, work will move to `rtcoin-client`, which will 
-be what users interact with to display their balances, transfer `tildecoin` to other users, etc.
-
 ## Notes
 
 * MIT Licensed
@@ -34,6 +25,13 @@ Soon I'll have a roadmap document outlining, in detail, the things that need to 
 I know from the outside the development direction is kind of opaque. I'm still figuring
 a couple of things out myself. I'm building the scaffolding right now, and will make 
 things more  robust as I go along.
+
+`rtcoin` uses a client-server architecture, per the RFC.
+
+Initial work is being done on [`rtcoin-server`](https://github.com/tildecoin/rtcoin/tree/master/rtcoin-server),
+which will handle connections to clients, client authentication, and manage the ledger as a 
+table in a `SQLite v3` database. Afterwards, work will move to `rtcoin-client`, which will 
+be what users interact with to display their balances, transfer `tildecoin` to other users, etc.
 
 * The ledger is using the native `AES-256` encryption in `libsqlcipher`
   - This is a superset of `libsqlite3`
