@@ -110,6 +110,9 @@ impl Comm {
         &self.trans
     }
 }
+
+const KEY: &'static str = "dog feet smell like tortilla chips";
+
 impl DB {
     // Connect to the ledger database, creating it
     // if necessary.
@@ -125,6 +128,10 @@ impl DB {
         let conn =
             Connection::open_with_flags(path, db_flags)
                 .expect("Could not open ledger connection");
+
+        let pragma = format!("PRAGMA key = '{}'", KEY);
+        conn.execute(&pragma, NO_PARAMS)
+            .expect("Couldn't pass PRAGMA to database");
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS ledger (

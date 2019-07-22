@@ -45,6 +45,7 @@ use crate::{
     db::DB,
 };
 
+/*
 pub fn crypt(key: &[u8], iv: &[u8], db_path: &str) {
     let db = fs::read(db_path).unwrap();
 
@@ -97,7 +98,7 @@ pub fn decrypt(key: &[u8], iv: &[u8], db_path: &str) {
     fs::write(db_path, &output).unwrap();
 }
 
-/*
+
 type HmacSha256 = Hmac<Sha256>;
 pub fn auth() {
     let mut mac = HmacSha256::new_varkey(b"dog feet").expect("Something went wrong");
@@ -114,13 +115,13 @@ pub fn auth() {
 
     //mac.verify(&code_bytes).unwrap();
 }
-*/
 
 #[cfg(test)]
 mod test {
     use super::*;
     const TESTDBPATH: &str = "/tmp/rtcoinledger.enc";
     #[test]
+    #[ignore]
     fn encryption_decryption() {
         let mut key: [u8; 32] = [0; 32];
         let mut iv: [u8; 16] = [0; 16];
@@ -143,3 +144,4 @@ mod test {
         assert_eq!(before, after);
     }
 }
+*/
