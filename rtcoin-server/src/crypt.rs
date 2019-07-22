@@ -97,6 +97,7 @@ pub fn decrypt(key: &[u8], iv: &[u8]) {
     fs::write(db::PATH, &output).unwrap();
 }
 
+/*
 type HmacSha256 = Hmac<Sha256>;
 pub fn auth() {
     let mut mac = HmacSha256::new_varkey(b"dog feet").expect("Something went wrong");
@@ -113,11 +114,12 @@ pub fn auth() {
 
     //mac.verify(&code_bytes).unwrap();
 }
+*/
 
 #[cfg(test)]
 mod test {
     use super::*;
-
+    const TESTDBPATH: &str = "/tmp/rtcoinledger.enc";
     #[test]
     fn encryption_decryption() {
         let mut key: [u8; 32] = [0; 32];
@@ -126,15 +128,15 @@ mod test {
         OsRng.fill_bytes(&mut iv);
         
         let mut data: [u8; 32] = [0; 32];
-        if fs::metadata(db::PATH).is_err() {
+        if fs::metadata(TESTDBPATH).is_err() {
             OsRng.fill_bytes(&mut data);
-            fs::write(db::PATH, &data).unwrap();
+            fs::write(TESTDBPATH, &data).unwrap();
         }
 
-        let before = fs::read(db::PATH).unwrap_or(data.to_vec());
+        let before = fs::read(TESTDBPATH).unwrap_or(data.to_vec());
         crypt(&key, &iv);
         decrypt(&key, &iv);
-        let after = fs::read(db::PATH).unwrap();
+        let after = fs::read(TESTDBPATH).unwrap();
 
         key.zeroize();
         iv.zeroize();
