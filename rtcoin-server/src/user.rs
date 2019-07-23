@@ -54,6 +54,9 @@ impl fmt::Display for User {
     }
 }
 
+// Most of the following is TERRIBLE.
+// I super pinky promise I'm going to rewrite
+// it soon.
 impl User {
     pub fn new(name: &str) -> User {
         let pass: Vec<u8> = vec![1, 0, 1, 0, 1];
@@ -135,6 +138,7 @@ impl User {
         self.messages.push(msg.to_string());
     }
 
+    // This one is extra Bad.
     pub fn compute_balance(&self, db: &DB) -> Result<f64, String> {
         let out = db.rows_by_user(&self.name);
 
@@ -165,13 +169,15 @@ impl User {
 }
 
 pub fn init(json: &serde_json::Value) -> InitCode {
-
+    // placeholder
     InitCode::Fail(String::from("Unspecified Error"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use serde_json::json;
 
     #[test]
     fn create_user_check_name_and_balance() {
@@ -265,5 +271,16 @@ mod tests {
 
         let out = user.messages();
         assert_eq!(out[0], "test");
+    }
+
+    #[test]
+    fn user_init() {
+        let tmp = json!("{ \"foo\": \"bar\"");
+        let lhs = init(&tmp);
+        let err = "Unspecified Error".to_string();
+
+        if let InitCode::Fail(val) = lhs {
+            assert_eq!(val, err);
+        }
     }
 }

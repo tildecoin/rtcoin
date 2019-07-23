@@ -5,7 +5,6 @@
 
 use std::{
     error::Error,
-    io,
     path::Path, 
     sync::mpsc,
 };
