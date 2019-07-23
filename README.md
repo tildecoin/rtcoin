@@ -20,11 +20,13 @@ If you'd like to help out, the current build dependencies are:
 
 * `libsqlcipher-dev`
 
-If you have a cool idea for how something should be implemented, go for it!
 Soon I'll have a roadmap document outlining, in detail, the things that need to be done.
-I know from the outside the development direction is kind of opaque. I'm still figuring
-a couple of things out myself. I'm building the scaffolding right now, and will make 
-things more  robust as I go along.
+I'm still figuring a couple of things out myself based on what's required by the RFC. 
+Until I have the development plan up, what's currently up should just be considered a
+kind of prototype implementation. I'll need to spend some time refactoring what I have
+after I finish the development plan, too. It's fairly messy right now. ¯\\\_(ツ)\_/¯
+
+`PLAN.md` coming soon to a repository near you!
 
 `rtcoin` uses a client-server architecture, per the RFC.
 
