@@ -244,13 +244,12 @@ fn serialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn
         })
     })?;
 
-    let mut out: Vec<LedgerEntry> = Vec::new();
-
-    for row in rows {
-        out.push(row?);
-    }
-
-    Ok(out)
+    Ok(
+        rows.map(|row| {
+            row.unwrap()
+        })
+        .collect::<Vec<LedgerEntry>>()
+    )
 }
 
 #[cfg(test)]
