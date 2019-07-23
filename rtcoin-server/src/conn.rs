@@ -235,13 +235,14 @@ mod test {
     #[test]
     fn test_json_to_comm() {
         let test_data = json!({
-            "kind": "BulkQuery",
-            "trans": "Source",
-            "trans_data": "Foo Barrington",
+            "kind":         "BulkQuery",
+            "trans":        "Source",
+            "trans_data":   "Foo Barrington",
         });
 
         let (tx, _) = mpsc::channel::<db::Reply>();
         let tx2 = tx.clone();
+        let tx3 = tx.clone();
 
         let case = if let Some(val) = json_to_comm(&test_data, tx) {
             val
@@ -260,9 +261,9 @@ mod test {
         }
 
         let test_data = json!({
-            "kind": "SingleQuery",
-            "trans": "ID",
-            "trans_data": "32",
+            "kind":         "SingleQuery",
+            "trans":        "ID",
+            "trans_data":   "32",
         });
 
         let case = if let Some(val) = json_to_comm(&test_data, tx2) {
@@ -279,6 +280,28 @@ mod test {
             db::Trans::ID(32) => { },
             _ => panic!("Incorrect Trans: case 2"),
         }
+
+        let test_data = json!({
+            "kind":         "SingleInsert",
+            "trans":        "LedgerHash",
+            "trans_data":   "0123456789",
+        });
+
+        let case = if let Some(val) = json_to_comm(&test_data, tx3) {
+            val
+        } else {
+            panic!("json_to_comm() failed: case 3");
+        };
+
+        match case.kind() {
+            db::Kind::SingleInsert => { },
+            _ => panic!("Incorrect Kind: case 3"),
+        }
+        let _hash = String::from("0123456789");
+        match case.trans() {
+            db::Trans::LedgerHash(_hash) => { },
+            _ => panic!("Incorrect Trans: case 3"),
+        }
     }
 
     #[test]
@@ -294,6 +317,17 @@ mod test {
         if fs::metadata(sock_path).is_ok() {
             fs::remove_file(sock_path).unwrap();
         }
+    }
+
+    #[test]
+    fn socket_addr_fail() {
+        let sock_path = Path::new("");
+        let sock = UnixListener::bind(sock_path).unwrap();
+
+        let addy = sock.local_addr().unwrap();
+        let name = addr(&addy);
+
+        assert_eq!(name, "Unknown Thread");
     }
 
     #[test]
