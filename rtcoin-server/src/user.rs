@@ -139,26 +139,22 @@ impl User {
     }
 
     // This one is extra Bad.
+    // OK, I made it a little better but I think 
+    // it won't work as expected. It's late. Will
+    // continue later.
     pub fn compute_balance(&self, db: &DB) -> Result<f64, String> {
         let out = db.rows_by_user(&self.name);
 
-        if let Ok(recv) = out {
-            let mut out = 1000.0;
-
-            for entry in recv {
-                if entry.destination == self.name {
-                    // if user is recipient
-                    out += entry.amount;
-                    continue;
+        if let Ok(recv) = out {            
+            return Ok(recv.iter().map(|row| {
+                let dest = row.destination.clone();
+                let src = row.source.clone();
+                let amount = row.amount;
+                match &self.name {
+                    row => amount,
+                    src => 0.0 - amount,
                 }
-                if entry.source == self.name {
-                    // if user is sender
-                    out -= entry.amount;
-                    continue;
-                }
-            }
-
-            return Ok(out);
+            }).sum::<f64>())
         } else if let Err(err) = out {
             // repackage the error as Err(&str)
             return Err(format!("{}", err));
