@@ -175,10 +175,12 @@ impl DB {
     pub fn worker_thread(&mut self) {
         while let Ok(comm) = self.pipe.recv() {
             match comm.kind {
-                Kind::BulkQuery => match bulk_query(&mut self.conn, comm) {
-                    Ok(_) => continue,
-                    Err(n) => eprintln!("{}", n),
-                },
+                Kind::BulkQuery => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
+                Kind::BulkInsert => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
+                Kind::BulkUpdate => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
+                Kind::SingleQuery => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
+                Kind::SingleInsert => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
+                Kind::SingleUpdate => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
                 Kind::Disconnect => return,
                 _ => continue,
             }
@@ -271,9 +273,8 @@ mod test {
 
         let kind = Kind::BulkQuery;
         let trans = Trans::ID(4);
-        let (comm_tx, rx) = mpsc::channel::<Reply>();
-        let tx2 = comm_tx.clone();
-        let comm = Comm::new(kind, trans, comm_tx);
+        let (tx_case1, rx_case1) = mpsc::channel::<Reply>();
+        let comm = Comm::new(kind, trans, tx_case1);
 
         let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
         let stmt = db.conn.prepare(stmt).unwrap();
@@ -288,10 +289,11 @@ mod test {
         // on db::Comm yet.
         let kind = Kind::BulkQuery;
         let trans = Trans::ID(4);
-        let comm2 = Comm::new(kind, trans, tx2);
+        let (tx_case2, rx_case2) = mpsc::channel::<Reply>();
+        let comm2 = Comm::new(kind, trans, tx_case2);
 
-        if let Err(_) = bulk_query(&mut db.conn, comm2) {
-            panic!("Failure in bulk_query()");
+        if let Err(err) = bulk_query(&mut db.conn, comm2) {
+            panic!("Failure in bulk_query(): {}", err);
         }
 
         thread::spawn(move || {
@@ -303,7 +305,8 @@ mod test {
         // the worker passes the comm packet to bulk_query(),
         // which hands it off to serialize_rows() before sending
         // it back down the channel to be received here.
-        rx.recv().unwrap();
+        rx_case1.recv().unwrap();
+        rx_case2.recv().unwrap();
 
         if fs::metadata(path).is_ok() {
             fs::remove_file(path).unwrap();
