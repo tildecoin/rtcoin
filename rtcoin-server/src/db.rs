@@ -166,7 +166,7 @@ impl DB {
         );
 
         let stmt = self.conn.prepare(&stmt)?;
-        let out = serialize_rows(stmt).unwrap();
+        let out = deserialize_rows(stmt).unwrap();
 
         Ok(out)
     }
@@ -217,9 +217,9 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
         .expect("Could not create users table");
 }
 
-// Serializes the rows returned from a query into
+// Deserializes the rows returned from a query into
 // a Vec of the LedgerEntry struct.
-fn serialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
+fn deserialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
     let mut stmt = stmt;
     let rows = stmt.query_map(NO_PARAMS, |row| {
         Ok(LedgerEntry {
@@ -268,7 +268,7 @@ mod test {
         let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
         let stmt = db.conn.prepare(stmt).unwrap();
 
-        if let Err(_) = serialize_rows(stmt) {
+        if let Err(_) = deserialize_rows(stmt) {
             panic!("failure in serialize_rows()");
         }
         
