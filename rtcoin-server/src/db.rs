@@ -52,14 +52,16 @@ pub enum Kind {
     Resolve,
     Second,
     Disconnect,
-    Empty, // means something went wrong
+    Empty,
 }
 
-// Response data to the Trans enum above.
-#[derive(Debug)]
+// When rows are serialized into plain text
+// and packed into this enum, they are tab-separated
+// to delineate columns.
+#[derive(Debug, Clone)]
 pub enum Reply {
-    Text(String),
-    Rows(Vec<LedgerEntry>),
+    Data(String),
+    Rows(Vec<String>),
 }
 
 // Each row in the ledger table is serialized
@@ -156,22 +158,9 @@ impl DB {
             }
         }
     }
-
-    // Return the rows associated with a single
-    // user, receiving and sending entries.
-    pub fn rows_by_user(&self, user: &str) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
-        let stmt = format!(
-            "SELECT * FROM ledger WHERE (destination = '{}' OR source = '{}')",
-            user, user,
-        );
-
-        let stmt = self.conn.prepare(&stmt)?;
-        let out = deserialize_rows(stmt).unwrap();
-
-        Ok(out)
-    }
 }
 
+// Just pulled out these statements to clean up DB::connect()
 fn startup_check_tables(conn: &rusqlite::Connection) {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS ledger (
@@ -209,6 +198,7 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
                 name        TEXT,
                 pass        TEXT,
                 balance     REAL,
+                messages    TEXT,
                 created     TEXT,
                 last_login  TEXT
             )",
@@ -278,7 +268,7 @@ mod test {
         // on db::Comm yet.
         let kind = Kind::Query;
         let args: Vec<String> = vec!["src".into(), "Bob".into()];
-        let (tx_case2, rx_case2) = mpsc::channel::<Reply>();
+        let (tx_case2, _rx_case2) = mpsc::channel::<Reply>();
         let comm2 = Comm::new(Some(kind), Some(args), Some(tx_case2));
 
         thread::spawn(move || {

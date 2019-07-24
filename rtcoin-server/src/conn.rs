@@ -7,9 +7,9 @@ use std::{
     io::{
         BufReader,
         BufRead,
-        Read,
         Write,
     },
+    net::Shutdown,
     os::unix::net::{
         SocketAddr, 
         UnixStream,
@@ -22,29 +22,36 @@ use serde_json::{
 };
 
 use crate::db;
+use crate::db::{
+    Kind,
+};
 use crate::user;
 
 pub const SOCK: &str = "/tmp/rtcoinserver.sock";
 
 // Used for quickly serializing an error into bytes
 // so that it may be sent across the socket. 
+// Current error codes:
+//      01: Worker error
+//      02: Could not parse request as JSON
+//      03: Invalid request
 #[derive(Debug)]
-pub struct MsgResp {
+pub struct ErrResp {
     code: u32,
+    kind: String,
     details: String,
-    context: String,
 }
 
 // These are fairly self-explanatory, boilerplate
 // methods for structs with private fields.
-impl MsgResp {
-    pub fn new(code: u32, details: &str) -> MsgResp {
+impl ErrResp {
+    pub fn new(code: u32, err: &str, details: &str) -> ErrResp {
+        let kind = err.to_string();
         let details = details.to_string();
-        let context = String::new();
-        MsgResp {
+        ErrResp {
             code,
+            kind,
             details,
-            context,
         }
     }
 
@@ -53,27 +60,29 @@ impl MsgResp {
             .as_bytes()
             .to_owned()
     }
-    pub fn add_context(&mut self, msg: &str) {
-        self.context = msg.to_string();
-    }
     pub fn code(&self) -> u32 {
         self.code
     }
+    pub fn kind(&self) -> String {
+        self.kind.clone()
+    }
     pub fn details(&self) -> String {
         self.details.clone()
-    }
-    pub fn context(&self) -> String {
-        self.context.clone()
     }
 }
 
 // First handler for each new connection.
 pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
+    // Have to make the connection mutable for route().
+    // Also, clone it to create a BufReader while still
+    // retaining access to the stream (BufReader::new()
+    // consumes the stream it's passed)
     let mut conn = conn;
     let incoming = conn.try_clone()
         .expect("conn.rs::L73::init() - failed to clone stream");
     let mut incoming = BufReader::new(incoming);
 
+    // deserialize the request
     let mut json_in = String::new();
     incoming.read_line(&mut json_in)
         .expect("Error reading client request");   
@@ -86,61 +95,74 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
         .expect("conn.rs::L85::init() - failed to read line for debug hold");
 }
 
+// This handles the routing of requests from *clients*
+// Internally-generated requests will bypass this
+// function and be sent directly to the Ledger Worker
+// thread. If those are detected, respond to the client
+// that we have received an invalid request.
 fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) {
-    let mut conn = conn;
-
-    match json_in["user_init"].as_str() {
-        Some(a) => {
-            let resp = match user::init(&json_in) {
-                user::InitCode::Success => MsgResp::new(0, "Success"),
-                user::InitCode::Fail(msg) => MsgResp::new(1, &msg),
-            };
-            let resp = resp.to_bytes();
-            conn.write(&resp)
-                .unwrap();
-            return
-        }
-        None => { },
-    }
-
     let (tx, rx) = mpsc::channel::<db::Reply>();
-    if let Some(comm) = json_to_comm(&json_in, tx) {
-        eprintln!("\n{:#?}", comm);
-        pipe.send(comm)
-            .unwrap();
+    let comm = json_to_comm(&json_in, tx).unwrap();
+
+    // need to flesh out the rest of these branches. 
+    // it'll probably just be logging for now.
+    match comm.kind() {
+        Kind::Register => user::register(&json_in),
+        Kind::Whoami => { },
+        Kind::Rename => { },
+        Kind::Send => { },
+        Kind::Sign => { },
+        Kind::Balance => { },
+        Kind::Verify => { },
+        Kind::Contest => { },
+        Kind::Audit => { },
+        Kind::Resolve => { },
+        Kind::Second => { },
+        Kind::Disconnect => {
+            invalid_request(conn, "Disconnect");
+            return
+         },
+        Kind::Query => {
+            invalid_request(conn, "Query");
+            return
+         },
+         &_ => {
+             invalid_request(conn, "Unknown request type");
+             return
+         },
     }
 
-    let resp: Option<db::Reply> = recv(rx.recv(), &mut conn);
+    pipe.send(comm).unwrap();
+    let resp: Option<db::Reply> = recv(rx.recv(), conn);
 
     if resp.is_none() {
         eprintln!("Closing client connection");
-        let out = MsgResp::new(1, "No response from worker. Closing connection.").to_bytes();
+        let out = ErrResp::new(01, "Worker Error", "No response from worker. Closing connection.").to_bytes();
         conn.write_all(&out).unwrap();
+        conn.shutdown(Shutdown::Both).unwrap();
     
     } else if let Some(val) = resp {
         let reply = format!("{:#?}", val);
         conn.write_all(reply.as_bytes()).unwrap();
     }
-
 }
 
 fn str_to_json(json_in: &str, conn: &mut UnixStream) -> Option<serde_json::Value> {
     return match serde_json::from_str(&json_in) {
         Ok(val) => Some(val),
-        Err(err) => {            
-            let mut out = MsgResp::new(1, "Could not parse request as JSON");
-            let err = format!("conn.rs#L75: {}", err);
-            out.add_context(&err);
+        Err(err) => {
+            let err = format!("{}", err);
+            let out = ErrResp::new(02, "JSON Error", &err);
 
             eprintln!(
                 "\nError {}:\n{}\n{}", 
                 out.code(), 
-                out.context(), 
+                out.kind(), 
                 out.details(),
             );
             
             let out = out.to_bytes();
-            conn.write(&out).unwrap();
+            conn.write_all(&out).unwrap();
             None
         }
     }
@@ -152,11 +174,10 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
         Err(err) => {
             let err = format!("{}", err);
             
-            let mut out = MsgResp::new(1, &err);
-            out.add_context("conn.rs#L96");
+            let out = ErrResp::new(01, "Worker Error", &err);
 
             let out = out.to_bytes();
-            conn.write(&out).unwrap();
+            conn.write_all(&out).unwrap();
 
             eprintln!("Error in Ledger Worker Response: {}", err);
             None
@@ -185,10 +206,20 @@ pub fn addr(addr: &SocketAddr) -> String {
 // don't play well with enums.
 fn json_to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
     let kind: db::Kind = match json["kind"].as_str()? {
-        "Query" => db::Kind::Query,
-        "Disconnect" => db::Kind::Disconnect,
-        "Send" => db::Kind::Send,
-        &_ => return None,
+        "Register" => Kind::Register,
+        "Whoami" => Kind::Whoami,
+        "Rename" => Kind::Rename,
+        "Send" => Kind::Send,
+        "Sign" => Kind::Sign,
+        "Balance" => Kind::Balance,
+        "Verify" => Kind::Verify,
+        "Contest" => Kind::Contest,
+        "Audit" => Kind::Audit,
+        "Resolve" => Kind::Resolve,
+        "Second" => Kind::Second,
+        "Query" => Kind::Query,             // Query and Disconnect are internal
+        "Disconnect" => Kind::Disconnect,   // values for miscellaneous database
+        &_ => return None,                  // queries and shutting down the DB.
     };
 
     let args = json["args"].as_str()?
@@ -203,6 +234,20 @@ fn json_to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
             Some(tx),
         )
     )
+}
+
+// Response when the connection worker receives an
+// external request specifying the "Disconnect" or
+// "Query" actions. Disconnect shuts down the
+// ledger worker and Query performs arbitrary
+// queries against the ledger database.
+fn invalid_request(conn: &mut UnixStream, kind: &str) {
+    let details = format!("\"{}\" is not an allowed request type", kind);
+    let msg = ErrResp::new(03, "Invalid Request", &details);
+    let msg = msg.to_bytes();
+
+    conn.write_all(&msg).unwrap();
+    conn.shutdown(Shutdown::Both).unwrap();
 }
 
 #[cfg(test)]
@@ -237,7 +282,6 @@ mod test {
             db::Kind::Disconnect => { },
             _ => panic!("Incorrect Kind: case 1"),
         }
-        let _src = "Foo Barrington".to_string();
 
         let test_data = json!({
             "kind":        "Send",
@@ -284,16 +328,11 @@ mod test {
 
     #[test]
     fn msg_resp() {
-        let out = MsgResp::new(0, "Test Error");
+        let out = ErrResp::new(00, "Test Error", "");
         let code = out.code();
-        let details = out.details();
+        let kind = out.kind();
         
-        assert_eq!(code, 0);
-        assert_eq!(details, "Test Error");
-    
-        let mut out = out;
-        out.add_context("Context");
-        let context = out.context();
-        assert_eq!(context, "Context");
+        assert_eq!(code, 00);
+        assert_eq!(kind, "Test Error");
     }
 }

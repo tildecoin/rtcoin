@@ -8,10 +8,7 @@ use std::{
 };
 
 use chrono::prelude::*;
-use ryu;
 use serde_json;
-
-use crate::db::DB;
 
 // Leaving the fields private to prevent
 // some funny business with the balances
@@ -81,13 +78,8 @@ impl User {
         self.balance
     }
 
-    // User.balance_as_string() uses the Ryu library
-    // to format its output. It is significantly faster
-    // than the stdlib implementation of converting an
-    // f64 to a string.
     pub fn balance_as_string(&self) -> String {
-        let mut buf = ryu::Buffer::new();
-        buf.format(self.balance).to_string() // &str -> String
+        format!("{}", self.balance)
     }
 
     // Make sure the deposit is positive.
@@ -137,43 +129,16 @@ impl User {
     pub fn append_messages(&mut self, msg: &str) {
         self.messages.push(msg.to_string());
     }
-
-    // This one is extra Bad.
-    // OK, I made it a little better but I think 
-    // it won't work as expected. It's late. Will
-    // continue later.
-    pub fn compute_balance(&self, db: &DB) -> Result<f64, String> {
-        let out = db.rows_by_user(&self.name);
-
-        if let Ok(recv) = out {            
-            return Ok(recv.iter().map(|row| {
-                let dest = row.destination.clone();
-                let src = row.source.clone();
-                let amount = row.amount;
-                match &self.name {
-                    row => amount,
-                    src => 0.0 - amount,
-                }
-            }).sum::<f64>())
-        } else if let Err(err) = out {
-            // repackage the error as Err(&str)
-            return Err(format!("{}", err));
-        };
-
-        Err("Something went wrong".to_string())
-    }
 }
 
-pub fn init(json: &serde_json::Value) -> InitCode {
+pub fn register(_json: &serde_json::Value) {
     // placeholder
-    InitCode::Fail(String::from("Unspecified Error"))
+    eprintln!("{:#?}", InitCode::Fail(String::from("Unspecified Error")));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use serde_json::json;
 
     #[test]
     fn create_user_check_name_and_balance() {
@@ -184,7 +149,7 @@ mod tests {
 
         let bal_str = user.balance_as_string();
 
-        assert_eq!(bal_str, "1000.0");
+        assert_eq!(bal_str, "1000");
     }
 
     #[test]
@@ -193,7 +158,7 @@ mod tests {
         user.deposit(100.0).expect("Failed to deposit 100.0");
 
         assert_eq!(user.balance(), 1100.0);
-        assert_eq!(&user.balance_as_string()[..], "1100.0");
+        assert_eq!(&user.balance_as_string()[..], "1100");
     }
 
     #[test]
@@ -214,7 +179,7 @@ mod tests {
         user.withdraw(100.0).expect("Failed to withdraw 100.0");
 
         assert_eq!(user.balance(), 900.0);
-        assert_eq!(&user.balance_as_string()[..], "900.0");
+        assert_eq!(&user.balance_as_string()[..], "900");
     }
 
     #[test]
@@ -267,16 +232,5 @@ mod tests {
 
         let out = user.messages();
         assert_eq!(out[0], "test");
-    }
-
-    #[test]
-    fn user_init() {
-        let tmp = json!("{ \"foo\": \"bar\"");
-        let lhs = init(&tmp);
-        let err = "Unspecified Error".to_string();
-
-        if let InitCode::Fail(val) = lhs {
-            assert_eq!(val, err);
-        }
     }
 }
