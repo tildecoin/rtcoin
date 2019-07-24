@@ -23,11 +23,9 @@ mod user;
 use db::DB;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // Connect to the ledger database. Will create the DB
-    // if it doesn't already exist.
+    // Create communication channel to the ledger database, then
+    // spawn the ledger worker to listen for query requests.
     let (tx, rx) = mpsc::channel::<db::Comm>();
-
-    // Spawn the ledger worker to listen for query requests.
     thread::spawn(move || spawn_ledger_worker_with_receiver(rx));
 
     // If the socket exists already, remove it.
@@ -44,23 +42,22 @@ fn main() -> Result<(), Box<dyn Error>> {
             fs::remove_file(sock).unwrap();
         }
 
-        let (useless_channel, _) = mpsc::channel::<db::Reply>();
         sigint_tx
             .send(db::Comm::new(
-                db::Kind::Disconnect,
-                vec!["noop".into()],
-                useless_channel
+                Some(db::Kind::Disconnect),
+                None,
+                None
             ))
             .expect("Failed to send disconnect comm to ledger worker");
         
-        // Give the database a bit to close
+        // Give the database a bit to close/encrypt
         thread::sleep(time::Duration::from_millis(50));
         process::exit(0);
     })
     .expect("SIGINT handler setup failure");
 
     // Bind to the socket. Spawn a new connection
-    // handler thread for each client connection.
+    // worker thread for each client connection.
     spawn_for_connections(&sock, tx);
 
     // Tidy up
@@ -69,8 +66,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) {
+    // This next call opens the actual database connection.
+    // It also creates the tables if they don't yet exist.
     let mut ledger = DB::connect(db::PATH, rx);
 
+    // Naming the thread helps with debugging. It will
+    // show up in panics.
     let ledger_worker = thread::Builder::new();
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
 
@@ -80,23 +81,28 @@ fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) {
     })
     .expect("Ledger worker failed to spawn");
 
+    // Block execution until the thread we just
+    // spawned returns.
     wait.join().unwrap();
-    process::exit(0);
 }
 
 fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
     let lstnr = UnixListener::bind(sock).unwrap_or_else(|_|{
         panic!("Could not bind to socket: {}",
         sock.to_str().unwrap())
-
     });
 
     while let Ok((conn, addr)) = lstnr.accept() {
+        // Rust's ownership system dictates that we
+        // clone the producer side of the channel,
+        // rather that just reuse it.
         let trx = tx.clone();
-        let new_conn = thread::Builder::new();
+        
+        let client_conn = thread::Builder::new();
         let name = conn::addr(&addr);
-        let new_conn = new_conn.name(name);
-        new_conn
+        let client_conn = client_conn.name(name);
+
+        client_conn
             .spawn(move || {
                 conn::init(conn, trx);
             })

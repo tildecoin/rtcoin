@@ -35,6 +35,8 @@ pub struct MsgResp {
     context: String,
 }
 
+// These are fairly self-explanatory, boilerplate
+// methods for structs with private fields.
 impl MsgResp {
     pub fn new(code: u32, details: &str) -> MsgResp {
         let details = details.to_string();
@@ -51,19 +53,15 @@ impl MsgResp {
             .as_bytes()
             .to_owned()
     }
-
     pub fn add_context(&mut self, msg: &str) {
         self.context = msg.to_string();
     }
-
     pub fn code(&self) -> u32 {
         self.code
     }
-
     pub fn details(&self) -> String {
         self.details.clone()
     }
-
     pub fn context(&self) -> String {
         self.context.clone()
     }
@@ -72,19 +70,20 @@ impl MsgResp {
 // First handler for each new connection.
 pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     let mut conn = conn;
-
-    let incoming = conn.try_clone().unwrap();
+    let incoming = conn.try_clone()
+        .expect("conn.rs::L73::init() - failed to clone stream");
     let mut incoming = BufReader::new(incoming);
 
     let mut json_in = String::new();
     incoming.read_line(&mut json_in)
-        .expect("Error reading client request");
-    
+        .expect("Error reading client request");   
     let json_in: Value = str_to_json(&json_in, &mut conn).unwrap();
 
     route(&mut conn, &json_in, &pipe);
 
-    conn.bytes().next();
+    let mut buf = String::new();
+    incoming.read_line(&mut buf)
+        .expect("conn.rs::L85::init() - failed to read line for debug hold");
 }
 
 fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) {
@@ -117,6 +116,7 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
         eprintln!("Closing client connection");
         let out = MsgResp::new(1, "No response from worker. Closing connection.").to_bytes();
         conn.write_all(&out).unwrap();
+    
     } else if let Some(val) = resp {
         let reply = format!("{:#?}", val);
         conn.write_all(reply.as_bytes()).unwrap();
@@ -129,7 +129,8 @@ fn str_to_json(json_in: &str, conn: &mut UnixStream) -> Option<serde_json::Value
         Ok(val) => Some(val),
         Err(err) => {            
             let mut out = MsgResp::new(1, "Could not parse request as JSON");
-            out.add_context("conn.rs#L75");
+            let err = format!("conn.rs#L75: {}", err);
+            out.add_context(&err);
 
             eprintln!(
                 "\nError {}:\n{}\n{}", 
@@ -178,7 +179,7 @@ pub fn addr(addr: &SocketAddr) -> String {
     String::from("Unknown Thread")
 }
 
-// Serializes a JSON Value struct into a db::Comm,
+// Deserializes a JSON Value struct into a db::Comm,
 // ready for passing to the ledger worker thread.
 // Serialize/Deserialize serde traits apparently
 // don't play well with enums.
@@ -197,9 +198,9 @@ fn json_to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
 
     Some(
         db::Comm::new(
-            kind, 
-            args, 
-            tx,
+            Some(kind), 
+            Some(args), 
+            Some(tx),
         )
     )
 }

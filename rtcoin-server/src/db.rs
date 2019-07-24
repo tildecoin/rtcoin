@@ -30,9 +30,9 @@ pub struct DB {
 // Includes an outbound channel for the response.
 #[derive(Debug)]
 pub struct Comm {
-    kind: Kind,
-    args: Vec<String>,
-    origin: mpsc::Sender<Reply>,
+    kind: Option<Kind>,
+    args: Option<Vec<String>>,
+    origin: Option<mpsc::Sender<Reply>>,
 }
 
 // Type of transaction we're doing with the
@@ -52,6 +52,7 @@ pub enum Kind {
     Resolve,
     Second,
     Disconnect,
+    Empty, // means something went wrong
 }
 
 // Response data to the Trans enum above.
@@ -76,10 +77,22 @@ pub struct LedgerEntry {
     pub receipt_hash: String,
 }
 
+// Same, but for archive table rows.
+#[derive(Debug)]
+pub struct ArchiveEntry {
+    pub id: u32,
+    pub transaction_type: String,
+    pub timestamp: String,
+    pub state: String,
+    pub merkle_hash: Vec<u8>,
+    pub hash: String,
+    pub filename: String,
+}
+
 impl Comm {
     // Cleanly package up a new request for
     // the ledger database worker thread.
-    pub fn new(kind: Kind, args: Vec<String>, origin: mpsc::Sender<Reply>) -> Comm {
+    pub fn new(kind: Option<Kind>, args: Option<Vec<String>>, origin: Option<mpsc::Sender<Reply>>) -> Comm {
         Comm {
             kind,
             args,
@@ -88,11 +101,16 @@ impl Comm {
     }
 
     pub fn kind(&self) -> &Kind {
-        &self.kind
+        match &self.kind {
+            Some(kind) => return &kind,
+            None => return &Kind::Empty,
+        }
     }
-
     pub fn args(&self) -> Vec<String> {
-        self.args.clone()
+        match &self.args {
+            Some(args) => return args.clone(),
+            None => return Vec::<String>::new(),
+        }
     }
 }
 
@@ -133,7 +151,7 @@ impl DB {
     pub fn worker_thread(&mut self) {
         while let Ok(comm) = self.pipe.recv() {
             match comm.kind {
-                Kind::Disconnect => return,
+                Some(Kind::Disconnect) => return,
                 _ => continue,
             }
         }
@@ -244,8 +262,8 @@ mod test {
 
         let kind = Kind::Balance;
         let args: Vec<String> = vec!["Bob".into()];
-        let (tx_case1, rx_case1) = mpsc::channel::<Reply>();
-        let comm = Comm::new(kind, args, tx_case1);
+        let (tx_case1, _rx_case1) = mpsc::channel::<Reply>();
+        let comm = Comm::new(Some(kind), Some(args), Some(tx_case1));
 
         let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
         let stmt = db.conn.prepare(stmt).unwrap();
@@ -261,7 +279,7 @@ mod test {
         let kind = Kind::Query;
         let args: Vec<String> = vec!["src".into(), "Bob".into()];
         let (tx_case2, rx_case2) = mpsc::channel::<Reply>();
-        let comm2 = Comm::new(kind, args, tx_case2);
+        let comm2 = Comm::new(Some(kind), Some(args), Some(tx_case2));
 
         thread::spawn(move || {
             db.worker_thread();
@@ -284,9 +302,9 @@ mod test {
     #[test]
     fn comm_kind() {
         let (tx, _) = mpsc::channel::<Reply>();
-        let somekind = Kind::Query;
+        let kind = Kind::Query;
         let args: Vec<String> = vec!["Source".into(),"Bob".into()];
-        let comm = Comm::new(somekind, args, tx);
+        let comm = Comm::new(Some(kind), Some(args), Some(tx));
 
         match comm.kind() {
             Kind::Query => { },
