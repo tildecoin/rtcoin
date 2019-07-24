@@ -184,40 +184,24 @@ pub fn addr(addr: &SocketAddr) -> String {
 // don't play well with enums.
 fn json_to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
     let kind: db::Kind = match json["kind"].as_str()? {
-        "BulkQuery" => db::Kind::BulkQuery,
-        "BulkInsert" => db::Kind::BulkInsert,
-        "BulkUpdate" => db::Kind::BulkUpdate,
-        "SingleQuery" => db::Kind::SingleQuery,
-        "SingleInsert" => db::Kind::SingleInsert,
-        "SingleUpdate" => db::Kind::SingleUpdate,
-        &_ => return None,
-    };
-    
-    let tmp = json["trans_data"].as_str()?.to_string();
-
-    let trans: db::Trans = match json["trans"].as_str()? {
-        "ID" => {
-            let id = tmp.trim().parse::<u32>().unwrap();
-            db::Trans::ID(id)
-        }
-        "TransType" => db::Trans::TransactionType(tmp),
-        "Timestamp" => db::Trans::Timestamp(tmp),
-        "Source" => db::Trans::Source(tmp),
-        "Destination" => db::Trans::Destination(tmp),
-        "Amount" => {
-            let amt = tmp.trim().parse::<f64>().unwrap();
-            db::Trans::Amount(amt)
-        }
-        "LedgerHash" => db::Trans::LedgerHash(tmp),
-        "ReceiptID" => {
-            let id = tmp.trim().parse::<u32>().unwrap();
-            db::Trans::ReceiptID(id)
-        }
-        "ReceiptHash" => db::Trans::ReceiptHash(tmp),
+        "Query" => db::Kind::Query,
+        "Disconnect" => db::Kind::Disconnect,
+        "Send" => db::Kind::Send,
         &_ => return None,
     };
 
-    Some(db::Comm::new(kind, trans, tx))
+    let args = json["args"].as_str()?
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    Some(
+        db::Comm::new(
+            kind, 
+            args, 
+            tx,
+        )
+    )
 }
 
 #[cfg(test)]
@@ -235,14 +219,12 @@ mod test {
     #[test]
     fn test_json_to_comm() {
         let test_data = json!({
-            "kind":         "BulkQuery",
-            "trans":        "Source",
-            "trans_data":   "Foo Barrington",
+            "kind":        "Disconnect",
+            "args":        "Source Foo"
         });
 
         let (tx, _) = mpsc::channel::<db::Reply>();
         let tx2 = tx.clone();
-        let tx3 = tx.clone();
 
         let case = if let Some(val) = json_to_comm(&test_data, tx) {
             val
@@ -251,19 +233,14 @@ mod test {
         };
 
         match case.kind() {
-            db::Kind::BulkQuery => { },
+            db::Kind::Disconnect => { },
             _ => panic!("Incorrect Kind: case 1"),
         }
         let _src = "Foo Barrington".to_string();
-        match case.trans() {
-            db::Trans::Source(_src) => { },
-            _ => panic!("Incorrect Trans: case 1"),
-        }
 
         let test_data = json!({
-            "kind":         "SingleQuery",
-            "trans":        "ID",
-            "trans_data":   "32",
+            "kind":        "Send",
+            "args":        "From Foo To Bob"
         });
 
         let case = if let Some(val) = json_to_comm(&test_data, tx2) {
@@ -273,34 +250,8 @@ mod test {
         };
 
         match case.kind() {
-            db::Kind::SingleQuery => { },
+            db::Kind::Send => { },
             _ => panic!("Incorrect Kind: case 2"),
-        }
-        match case.trans() {
-            db::Trans::ID(32) => { },
-            _ => panic!("Incorrect Trans: case 2"),
-        }
-
-        let test_data = json!({
-            "kind":         "SingleInsert",
-            "trans":        "LedgerHash",
-            "trans_data":   "0123456789",
-        });
-
-        let case = if let Some(val) = json_to_comm(&test_data, tx3) {
-            val
-        } else {
-            panic!("json_to_comm() failed: case 3");
-        };
-
-        match case.kind() {
-            db::Kind::SingleInsert => { },
-            _ => panic!("Incorrect Kind: case 3"),
-        }
-        let _hash = String::from("0123456789");
-        match case.trans() {
-            db::Trans::LedgerHash(_hash) => { },
-            _ => panic!("Incorrect Trans: case 3"),
         }
     }
 

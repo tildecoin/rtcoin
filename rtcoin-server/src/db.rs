@@ -31,46 +31,32 @@ pub struct DB {
 #[derive(Debug)]
 pub struct Comm {
     kind: Kind,
-    trans: Trans,
+    args: Vec<String>,
     origin: mpsc::Sender<Reply>,
-}
-
-// This identifies what should be queried for.
-// The assumption is that several rows will be
-// expected by the caller. The enumerated
-// transaction types are subject to change as
-// the design progresses.
-#[derive(Debug)]
-pub enum Trans {
-    ID(u32),
-    TransactionType(String),
-    Timestamp(String),
-    Source(String),
-    Destination(String),
-    Amount(f64),
-    LedgerHash(String),
-    ReceiptID(u32),
-    ReceiptHash(String),
 }
 
 // Type of transaction we're doing with the
 // database.
 #[derive(Debug)]
 pub enum Kind {
-    BulkQuery,
-    BulkInsert,
-    BulkUpdate,
-    SingleQuery,
-    SingleInsert,
-    SingleUpdate,
+    Register,
+    Query,
+    Whoami,
+    Rename,
+    Send,
+    Sign,
+    Balance,
+    Verify,
+    Contest,
+    Audit,
+    Resolve,
+    Second,
     Disconnect,
 }
 
 // Response data to the Trans enum above.
 #[derive(Debug)]
 pub enum Reply {
-    Int(u32),
-    F64(f64),
     Text(String),
     Rows(Vec<LedgerEntry>),
 }
@@ -93,10 +79,10 @@ pub struct LedgerEntry {
 impl Comm {
     // Cleanly package up a new request for
     // the ledger database worker thread.
-    pub fn new(kind: Kind, trans: Trans, origin: mpsc::Sender<Reply>) -> Comm {
+    pub fn new(kind: Kind, args: Vec<String>, origin: mpsc::Sender<Reply>) -> Comm {
         Comm {
             kind,
-            trans,
+            args,
             origin,
         }
     }
@@ -105,8 +91,8 @@ impl Comm {
         &self.kind
     }
 
-    pub fn trans(&self) -> &Trans {
-        &self.trans
+    pub fn args(&self) -> Vec<String> {
+        self.args.clone()
     }
 }
 
@@ -134,34 +120,7 @@ impl DB {
         conn.execute(&pragma, NO_PARAMS)
             .expect("Couldn't pass PRAGMA to database");
 
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS ledger (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT, 
-                type            TEXT, 
-                timestamp       TEXT, 
-                source          TEXT, 
-                destination     TEXT, 
-                amount          REAL, 
-                ledger_hash     TEXT, 
-                receipt_id      INTEGER, 
-                receipt_hash    TEXT
-            )",
-            NO_PARAMS,
-        )
-        .expect("Could not create ledger table");
-
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS users (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                name        TEXT,
-                pass        TEXT,
-                balance     REAL,
-                created     TEXT,
-                last_login  TEXT
-            )",
-            NO_PARAMS,
-        )
-        .expect("Could not create users table");
+        startup_check_tables(&conn);
 
         DB { 
             conn, 
@@ -174,12 +133,6 @@ impl DB {
     pub fn worker_thread(&mut self) {
         while let Ok(comm) = self.pipe.recv() {
             match comm.kind {
-                Kind::BulkQuery => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
-                Kind::BulkInsert => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
-                Kind::BulkUpdate => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
-                Kind::SingleQuery => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
-                Kind::SingleInsert => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
-                Kind::SingleUpdate => { bulk_query(&mut self.conn, comm).map_err(|err| eprintln!("{}", err)).unwrap(); }
                 Kind::Disconnect => return,
                 _ => continue,
             }
@@ -201,30 +154,49 @@ impl DB {
     }
 }
 
-// Returns a vector of LedgerEntry structs, each representing
-// a single row returned by this query.
-fn bulk_query(db: &mut Connection, comm: Comm) -> Result<(), Box<dyn Error>> {
-    let mut stmt = "SELECT * FROM ledger WHERE ".to_string();
+fn startup_check_tables(conn: &rusqlite::Connection) {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ledger (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT, 
+                type            TEXT, 
+                timestamp       TEXT, 
+                source          TEXT, 
+                destination     TEXT, 
+                amount          REAL, 
+                ledger_hash     TEXT, 
+                receipt_id      INTEGER, 
+                receipt_hash    TEXT
+            )",
+            NO_PARAMS,
+        )
+        .expect("Could not create ledger table");
 
-    match comm.trans {
-        Trans::ID(n) => stmt.push_str(&format!("id = '{}'", n)),
-        Trans::TransactionType(n) => stmt.push_str(&format!("type = '{}'", n)),
-        Trans::Timestamp(n) => stmt.push_str(&format!("timestamp = '{}'", n)),
-        Trans::Source(n) => stmt.push_str(&format!("source = '{}'", n)),
-        Trans::Destination(n) => stmt.push_str(&format!("destination = '{}'", n)),
-        Trans::Amount(n) => stmt.push_str(&format!("amount = '{}'", n)),
-        Trans::LedgerHash(n) => stmt.push_str(&format!("ledger_hash = '{}'", n)),
-        Trans::ReceiptID(n) => stmt.push_str(&format!("receipt_id = '{}'", n)),
-        Trans::ReceiptHash(n) => stmt.push_str(&format!("receipt_hash = '{}'", n)),
-    }
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS archive (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                type            TEXT,
+                timestamp       TEXT,
+                state           TEXT,
+                merkle_hash     TEXT,
+                hash            TEXT,
+                filename        TEXT
+            )",
+            NO_PARAMS,
+        )
+        .expect("Could not create archive table");
 
-    let txn = db.transaction()?;
-    let stmt = txn.prepare(&stmt)?;
-
-    let out = serialize_rows(stmt).unwrap();
-    comm.origin.send(Reply::Rows(out))?;
-
-    Ok(())
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS users (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT,
+                pass        TEXT,
+                balance     REAL,
+                created     TEXT,
+                last_login  TEXT
+            )",
+            NO_PARAMS,
+        )
+        .expect("Could not create users table");
 }
 
 // Serializes the rows returned from a query into
@@ -270,10 +242,10 @@ mod test {
 
         assert!(fs::metadata(path).is_ok());
 
-        let kind = Kind::BulkQuery;
-        let trans = Trans::ID(4);
+        let kind = Kind::Balance;
+        let args: Vec<String> = vec!["Bob".into()];
         let (tx_case1, rx_case1) = mpsc::channel::<Reply>();
-        let comm = Comm::new(kind, trans, tx_case1);
+        let comm = Comm::new(kind, args, tx_case1);
 
         let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
         let stmt = db.conn.prepare(stmt).unwrap();
@@ -286,26 +258,23 @@ mod test {
         // instances of kind and trans. Need to duplicate
         // to test bulk_query(). Also, Clone isn't implemented
         // on db::Comm yet.
-        let kind = Kind::BulkQuery;
-        let trans = Trans::ID(4);
+        let kind = Kind::Query;
+        let args: Vec<String> = vec!["src".into(), "Bob".into()];
         let (tx_case2, rx_case2) = mpsc::channel::<Reply>();
-        let comm2 = Comm::new(kind, trans, tx_case2);
-
-        if let Err(err) = bulk_query(&mut db.conn, comm2) {
-            panic!("Failure in bulk_query(): {}", err);
-        }
+        let comm2 = Comm::new(kind, args, tx_case2);
 
         thread::spawn(move || {
             db.worker_thread();
         });
         
         worker_tx.send(comm).unwrap();
+        worker_tx.send(comm2).unwrap();
 
         // the worker passes the comm packet to bulk_query(),
         // which hands it off to serialize_rows() before sending
         // it back down the channel to be received here.
-        rx_case1.recv().unwrap();
-        rx_case2.recv().unwrap();
+        //rx_case1.recv().unwrap();
+        //rx_case2.recv().unwrap();
 
         if fs::metadata(path).is_ok() {
             fs::remove_file(path).unwrap();
@@ -313,20 +282,26 @@ mod test {
     }
 
     #[test]
-    fn comm_kind_and_trans() {
+    fn comm_kind() {
         let (tx, _) = mpsc::channel::<Reply>();
-        let sometrans = Trans::ID(0);
-        let somekind = Kind::BulkQuery;
-        let comm = Comm::new(somekind, sometrans, tx);
-
-        match comm.trans() {
-            Trans::ID(0) => { },
-            _ => panic!("Incorrect Trans"),
-        }
+        let somekind = Kind::Query;
+        let args: Vec<String> = vec!["Source".into(),"Bob".into()];
+        let comm = Comm::new(somekind, args, tx);
 
         match comm.kind() {
-            Kind::BulkQuery => { },
+            Kind::Query => { },
             _ => panic!("Incorrect Kind"),
+        }
+
+        let arg1 = comm.args()[0].clone();
+        let arg2 = comm.args()[1].clone();
+        match &arg1[..] {
+            "Source" => { },
+            _ => panic!("Incorrect arguments"),
+        }
+        match &arg2[..] {
+            "Bob" => { },
+            _ => panic!("Incorrect arguments"),
         }
     }
 }

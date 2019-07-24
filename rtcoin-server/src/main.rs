@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         sigint_tx
             .send(db::Comm::new(
                 db::Kind::Disconnect,
-                db::Trans::ID(0),
+                vec!["noop".into()],
                 useless_channel
             ))
             .expect("Failed to send disconnect comm to ledger worker");
