@@ -1,6 +1,6 @@
 # Development Plan
 
-This document represents the current expected course of development
+This document represents the current expected blueprint
 for `rtcoin` as of `23 July 2019`
 
 *Not Finalized*
