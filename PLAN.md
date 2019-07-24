@@ -25,7 +25,7 @@ for `rtcoin` as of `23 July 2019`
 **Ledger Worker**
 * Receives requests on an `mpsc`, no restriction on buffer.
 * Since SQLite is serializing transactions, new threads can be spawned all willy-nilly to run the transactions without sacrificing database integrity. SQLite will handle the mutexing internally.
-* Requests will have been previously serialized into a struct containing the following fields:
+* Requests will have been previously deserialized into a struct containing the following fields:
     * `enum` Type of request: Register, Query, WHOAMI, Rename, Send, Sign, Balance, Verify, Contest, Audit, Resolve, Second
     * `String` Arguments of request. This will be split and verified, then a SQL statement will be constructed internally.
     * `mpsc` Origin channel leading to the thread associated with the requesting connection.
@@ -33,7 +33,12 @@ for `rtcoin` as of `23 July 2019`
 
 **Connection Worker**
 * Spawns a new thread for each incoming client connection.
+* Clones the Sender half of Ledger Worker's channel to give to each child thread.
+
+**Connection Child Threads**
 * Receives signed JSON requests via UNIX Domain Socket.
-* Verifies the signature and unpacks the JSON into a request struct.
-* Sends the request to the Ledger Worker.
+* Verifies signature of each request. If it fails, let the client know, then disconnect/die.
+* Unpacks the JSON into a request struct.
+    * Still working on a schema that would allow variability in requests without making it too cumbersome to deserialize into the request structure. Trying to keep the code simple.
+* Sends the request to the Ledger Worker along its channel.
 * Packs replies from the Ledger Worker into signed JSON and sends it back to the client.
