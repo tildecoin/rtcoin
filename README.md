@@ -33,3 +33,8 @@ Initial work is being done on [`rtcoin-server`](https://github.com/tildecoin/rtc
 which will handle connections to clients, client authentication, and manage the ledger as a 
 table in a `SQLite v3` database. Afterwards, work will move to `rtcoin-client`, which will 
 be what users interact with to display their balances, transfer `tildecoin` to other users, etc.
+
+The main issue that I need to tackle at the moment is for the operator of `rtcoin-server` to
+authenticate against `SQLite` in a safe way. I can prompt for the password, but it's preferably to
+have the authentication done passively, so that `rtcoin-server` may be controlled via a typical 
+init system.
