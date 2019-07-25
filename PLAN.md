@@ -11,7 +11,7 @@ for `rtcoin` as of `24 July 2019`
 
 **Ledger Database**
 * libsqlcipher's native `AES-256` encryption will be used.
-* The database key will be provided by the instance administrator. It's suggested to use something like `pwgen` to create a strong, lengthy password or passphrase. Care should be taken to ensure the file containing the key is locked down, not group or world-readable. Treat it like a private GPG or SSL key. This method kind of worries me, I'm probably going to come up with something better.
+* The database key / passphrase is something I haven't worked out a solution for.
 * SQLite is accessed in serialized mode of operation
 * Three tables: Ledger, Archive, Users
 
