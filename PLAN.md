@@ -11,13 +11,13 @@ for `rtcoin` as of `24 July 2019`
 
 **Ledger Database**
 * libsqlcipher's native `AES-256` encryption will be used.
-* The database key / passphrase is something I haven't worked out a solution for.
+* Will prompt for a database password on startup. This will present additional complexity when attempting to control `rtcoin-server` from a traditional init system. However, this is a trade-off to make for additional security.
 * SQLite is accessed in serialized mode of operation
 * Three tables: Ledger, Archive, Users
 
 **Server Daemon**
 * Two primary threads of execution: Ledger Worker and Connection Worker
-* On first startup, will generate a key pair.
+* On first startup, will generate a key pair to verify requests and sign responses.
 * Listen on UNIX Domain Socket
 * Connection worker will spawn a new thread to handle each connection received.
 * Each connection thread will communicate with the Ledger Worker via `mpsc` (channel).

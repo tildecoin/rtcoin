@@ -34,7 +34,8 @@ which will handle connections to clients, client authentication, and manage the 
 table in a `SQLite v3` database. Afterwards, work will move to `rtcoin-client`, which will 
 be what users interact with to display their balances, transfer `tildecoin` to other users, etc.
 
-The main issue that I need to tackle at the moment is for the operator of `rtcoin-server` to
-authenticate against `SQLite` in a safe way. I can prompt for the password, but it's preferably to
-have the authentication done passively, so that `rtcoin-server` may be controlled via a typical 
-init system.
+## Updates
+
+**2019.07.27**
+
+I've decided on prompting for the database password on `rtcoin-server` startup. This was a compromise that took into account implementation complexity, security, and user experience with respect to controlling the server.
