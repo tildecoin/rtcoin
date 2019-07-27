@@ -140,6 +140,10 @@ impl DB {
         conn.execute(&pragma, NO_PARAMS)
             .expect("Couldn't pass PRAGMA to database");
 
+        // This has a dual purpose: First, create the three
+        // tables on first startup. If subsequent startups
+        // fail to execute these statements, the key is
+        // incorrect.
         startup_check_tables(&conn);
 
         DB { 

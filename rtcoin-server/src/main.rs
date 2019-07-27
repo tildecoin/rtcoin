@@ -15,6 +15,8 @@ use std::{
 };
 
 use ctrlc;
+use threadpool::ThreadPool;
+use num_cpus;
 
 mod conn;
 mod db;
@@ -92,20 +94,24 @@ fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
         sock.to_str().unwrap())
     });
 
-    while let Ok((conn, addr)) = lstnr.accept() {
-        // Rust's ownership system dictates that we
-        // clone the producer side of the channel,
-        // rather that just reuse it.
-        let trx = tx.clone();
-        
-        let client_conn = thread::Builder::new();
-        let name = conn::addr(&addr);
-        let client_conn = client_conn.name(name);
+    // The thread pool will always allow at least
+    // four simultaneous client connections. I chose 
+    // this multiplier because the client connections 
+    // will generally not exec resource intensive 
+    // operations.
+    let thread_num = num_cpus::get() * 4;
+    let pool = ThreadPool::with_name("Client Connection".into(), thread_num);
+    eprintln!("Using pool of {} threads", thread_num);
 
-        client_conn
-            .spawn(move || {
+    while let Ok((conn, addr)) = lstnr.accept() {
+        // This is the channel that allows
+        // clients to communicate with the
+        // ledger worker process.
+        let trx = tx.clone();
+        eprintln!("New connection: {:?}", addr);
+       
+        pool.execute(move || {
                 conn::init(conn, trx);
-            })
-            .unwrap();
+            });
     }
 }
