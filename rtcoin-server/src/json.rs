@@ -99,6 +99,12 @@ mod test {
         let lhs = from_str(lhs_proto, None).unwrap();
 
         assert_eq!(lhs, rhs);
+
+        if let Some(val) = from_str("foo BAR invalid json", None) {
+            panic!("That was invalid, why did it pass? {}", val);
+        }
+
+        assert_eq!(from_str("MORE INVALID json", None), None);
     }
 
     #[test]
