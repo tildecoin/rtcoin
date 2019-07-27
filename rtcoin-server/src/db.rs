@@ -20,6 +20,8 @@ use rusqlite::{
     NO_PARAMS,
 };
 
+use zeroize::Zeroize;
+
 pub const PATH: &str = "/tmp/rtcoinledger.db";
 
 // Wrapper for the database connection and the
@@ -121,12 +123,10 @@ impl Comm {
     }
 }
 
-const KEY: &'static str = "dog feet smell like tortilla chips";
-
 impl DB {
     // Connect to the ledger database, creating it
     // if necessary.
-    pub fn connect(path: &str, pipe: mpsc::Receiver<Comm>) -> DB {
+    pub fn connect(path: &str, db_key: String, pipe: mpsc::Receiver<Comm>) -> DB {
         let mut db_flags = OpenFlags::empty();
         db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true);        // Create DB if it doesn't exist.
         db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true);    // RW mode.
@@ -144,12 +144,17 @@ impl DB {
         // This PRAGMA is what either enables
         // encryption on a new database or allows 
         // the decryption of an existing database.
-        let pragma = format!("PRAGMA key = '{}'", KEY);
+        let mut pragma = format!("PRAGMA key = '{}'", db_key);
+        let mut db_key = db_key;
+        db_key.zeroize();
+
         conn.execute(&pragma, NO_PARAMS)
             .unwrap_or_else(|err| {
                 error!("When authenticating with database: {}", err);
                 panic!("{}", err);
             });
+
+        pragma.zeroize();
 
         // This has a dual purpose: First, create the three
         // tables on first startup. If subsequent startups
@@ -262,7 +267,8 @@ mod test {
     fn worker_thread_spawn_send_recv_serialize_rows() {
         let path = "./test-db";
         let (worker_tx, pipe) = mpsc::channel::<Comm>();
-        let mut db = DB::connect(path, pipe);
+        let test_key = "something something password";
+        let mut db = DB::connect(path, test_key.into(), pipe);
 
         assert!(fs::metadata(path).is_ok());
 

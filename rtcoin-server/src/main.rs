@@ -6,6 +6,7 @@
 use std::{
     error::Error, 
     fs,
+    io,
     os::unix::net::UnixListener, 
     path::Path, 
     process, 
@@ -22,8 +23,10 @@ use log::{
     warn,
 };
 
+use rpassword;
 use threadpool::ThreadPool;
 use num_cpus;
+use zeroize::Zeroize;
 
 mod conn;
 mod db;
@@ -37,11 +40,24 @@ fn main() -> Result<(), Box<dyn Error>> {
     logging::init();
     info!("rtcoin-server is initializing.\n");
 
+    eprintln!("\nrtcoin-server 0.1-dev");
+    eprintln!("\nPlease enter the ledger password:");
+    let mut db_key_in = rpassword::prompt_password_stderr("> ")
+        .unwrap_or_else(|err| {
+            error!("Failed to read ledger password: {}", err);
+            panic!("{}", err);
+        });
+    eprintln!();
+    let db_key = db_key_in.trim().to_string();
+    db_key_in.zeroize();
+
+    eprintln!("Continuing startup process. See log file for details.");
+    eprintln!();
     // Create communication channel to the ledger database, then
     // spawn the ledger worker to listen for query requests.
     info!("Starting ledger worker...");
     let (tx, rx) = mpsc::channel::<db::Comm>();
-    thread::spawn(move || spawn_ledger_worker_with_receiver(rx));
+    thread::spawn(move || spawn_ledger_worker_with_receiver(db_key, rx));
 
     // If the socket exists already, remove it.
     let sock = Path::new(conn::SOCK);
@@ -85,11 +101,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) {
+fn spawn_ledger_worker_with_receiver(db_key: String, rx: mpsc::Receiver<db::Comm>) {
     // This next call opens the actual database connection.
     // It also creates the tables if they don't yet exist.
     info!("Connecting to database: {}", db::PATH);
-    let mut ledger = DB::connect(db::PATH, rx);
+    let mut ledger = DB::connect(db::PATH, db_key.clone(), rx);
+    let mut db_key = db_key;
+    db_key.zeroize();
 
     // Naming the thread helps with debugging. It will
     // show up in panics.
