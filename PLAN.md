@@ -24,7 +24,7 @@ for `rtcoin` as of `24 July 2019`
 
 **Ledger Worker**
 * Receives requests on an `mpsc`, no restriction on buffer.
-* Since SQLite is serializing transactions, new threads can be spawned all willy-nilly to run the transactions without sacrificing database integrity. SQLite will handle the mutexing internally.
+* Since SQLite is serializing transactions, new threads can be spawned to run the transactions without sacrificing database integrity. SQLite will handle the mutexing internally. However, `std::thread` spawns and controls OS threads rather than something lightweight like the `M:N` threads in `Go`. I need to consider some designs using `async` and `await`. This would allow a bit more scalability without the impact on system resources that comes with OS threads (a minor one, but more than with `M:N` threads). The caveat being that `async` and `await` are not in stable Rust yet. See [areweasyncyet.rs](https://areweasyncyet.rs) for the development status of asynchronous Rust.
 * Requests will have been previously deserialized into a struct containing the following fields:
     * `enum` Type of request: Register, Whoami, Rename, Send, Sign, Balance, Verify, Contest, Audit, Resolve, Second, Query, Disconnect. Query and Disconnect will be reserved for internal requests. Client-originating requests will be unable to utilize "Query" (arbitrary query) or "Disconnect" (shut down worker thread) - they will trigger an error response.
     * `Vec<String>` Arguments of request (even indices beginning 0 represent the type of argument, odd indices represent the argument itself). A valid SQL statement will be constructed internally.
