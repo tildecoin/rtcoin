@@ -17,6 +17,13 @@ use std::{
     sync::mpsc,
 };
 
+use log::{
+    info,
+    error,
+    warn,
+    debug,
+};
+
 use serde_json::{
     Value,
 };
@@ -78,14 +85,21 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     // retaining access to the stream (BufReader::new()
     // consumes the stream it's passed)
     let mut conn = conn;
-    let incoming = conn.try_clone()
-        .expect("conn.rs::L73::init() - failed to clone stream");
+    let incoming = conn.try_clone().unwrap_or_else(|err| {
+        error!("Client connection error: {}", err);
+        debug!("Failed to clone UnixStream: conn.rs::init()");
+        panic!("{}", err);
+    });
     let mut incoming = BufReader::new(incoming);
 
     // deserialize the request
     let mut json_in = String::new();
     incoming.read_line(&mut json_in)
-        .expect("Error reading client request");   
+        .unwrap_or_else(|err| {
+            error!("Error reading client request: {}", err);
+            debug!("conn.rs::init(), incoming.read_line(..), error: {}", err);
+            panic!("{}", err);
+        });   
     let json_in: Value = str_to_json(&json_in, &mut conn).unwrap();
 
     route(&mut conn, &json_in, &pipe);
@@ -136,7 +150,7 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
     let resp: Option<db::Reply> = recv(rx.recv(), conn);
 
     if resp.is_none() {
-        eprintln!("Closing client connection");
+        info!("Closing client connection");
         let out = ErrResp::new(01, "Worker Error", "No response from worker. Closing connection.").to_bytes();
         conn.write_all(&out).unwrap();
         conn.shutdown(Shutdown::Both).unwrap();
@@ -154,7 +168,7 @@ fn str_to_json(json_in: &str, conn: &mut UnixStream) -> Option<serde_json::Value
             let err = format!("{}", err);
             let out = ErrResp::new(02, "JSON Error", &err);
 
-            eprintln!(
+            error!(
                 "\nError {}:\n{}\n{}", 
                 out.code(), 
                 out.kind(), 
@@ -179,7 +193,7 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
             let out = out.to_bytes();
             conn.write_all(&out).unwrap();
 
-            eprintln!("Error in Ledger Worker Response: {}", err);
+            error!("Error in Ledger Worker Response: {}", err);
             None
         }
     }
@@ -245,6 +259,8 @@ fn invalid_request(conn: &mut UnixStream, kind: &str) {
     let details = format!("\"{}\" is not an allowed request type", kind);
     let msg = ErrResp::new(03, "Invalid Request", &details);
     let msg = msg.to_bytes();
+
+    error!("Received invalid request from client: {}", details);
 
     conn.write_all(&msg).unwrap();
     conn.shutdown(Shutdown::Both).unwrap();

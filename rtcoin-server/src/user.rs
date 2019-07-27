@@ -3,11 +3,24 @@
 // See LICENSE file for detailed license information.
 //
 
+// This file currently only contains placeholder
+// functions and structures for the sake of
+// organization. None of the following will be
+// making it into rtcoin -- it will all be rewritten
+// with actual functionality once I start on user
+// methods.
+
 use std::{
     fmt,
 };
 
 use chrono::prelude::*;
+use log::{
+    debug,
+    error,
+    info,
+    warn,
+};
 use serde_json;
 
 // Leaving the fields private to prevent
@@ -92,10 +105,6 @@ impl User {
         Ok(())
     }
 
-    // Check if the withdrawal results in a negative balance.
-    // A currency simulation with negative balances could get
-    // a bit unwieldy.
-    // Also make sure we're withdrawing a positive number.
     pub fn withdraw(&mut self, amt: f64) -> Result<(), &'static str> {
         if self.balance < amt {
             return Err("Insufficient funds");
@@ -107,18 +116,11 @@ impl User {
         Ok(())
     }
 
-    // Acts as a wrapper for withdraw/deposit. Lets any errors
-    // with those bubble up, and appends the message to the
-    // associated User obj.
     pub fn send(&mut self, other: &mut User, amount: f64, msg: &str) -> Result<(), &'static str> {
         self.withdraw(amount)?;
         other.deposit(amount)?;
 
         other.messages.push(msg.to_string());
-
-        // TODO: remove this debug print after I'm
-        // certain the messages are handled properly.
-        println!("A message to you, Rudy:\n\t{}", msg);
         Ok(())
     }
 
@@ -133,7 +135,7 @@ impl User {
 
 pub fn register(_json: &serde_json::Value) {
     // placeholder
-    eprintln!("{:#?}", InitCode::Fail(String::from("Unspecified Error")));
+    error!("{:#?}", InitCode::Fail(String::from("Unspecified Error")));
 }
 
 #[cfg(test)]

@@ -9,6 +9,11 @@ use std::{
     sync::mpsc,
 };
 
+use log::{
+    error,
+    info,
+};
+
 use rusqlite::{
     Connection, 
     OpenFlags, 
@@ -131,14 +136,20 @@ impl DB {
         let path = Path::new(path);
         let conn =
             Connection::open_with_flags(path, db_flags)
-                .expect("Could not open ledger connection");
+                .unwrap_or_else(|err| {
+                    error!("Could not open ledger connection: {}", err);
+                    panic!("{}", err);
+                });
 
         // This PRAGMA is what either enables
         // encryption on a new database or allows 
         // the decryption of an existing database.
         let pragma = format!("PRAGMA key = '{}'", KEY);
         conn.execute(&pragma, NO_PARAMS)
-            .expect("Couldn't pass PRAGMA to database");
+            .unwrap_or_else(|err| {
+                error!("When authenticating with database: {}", err);
+                panic!("{}", err);
+            });
 
         // This has a dual purpose: First, create the three
         // tables on first startup. If subsequent startups
@@ -156,6 +167,7 @@ impl DB {
     // process the incoming Comms.
     pub fn worker_thread(&mut self) {
         while let Ok(comm) = self.pipe.recv() {
+            info!("Ledger Worker :: Received Comm :: {:?}", comm);
             match comm.kind {
                 Some(Kind::Disconnect) => return,
                 _ => continue,

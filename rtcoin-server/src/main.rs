@@ -15,35 +15,50 @@ use std::{
 };
 
 use ctrlc;
+
+use log::{
+    error,
+    info,
+    warn,
+};
+
 use threadpool::ThreadPool;
 use num_cpus;
 
 mod conn;
 mod db;
+mod logging;
 mod user;
 
 use db::DB;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    logging::init();
+    info!("rtcoin-server is initializing.\n");
+
     // Create communication channel to the ledger database, then
     // spawn the ledger worker to listen for query requests.
+    info!("Starting ledger worker...");
     let (tx, rx) = mpsc::channel::<db::Comm>();
     thread::spawn(move || spawn_ledger_worker_with_receiver(rx));
 
     // If the socket exists already, remove it.
     let sock = Path::new(conn::SOCK);
     if fs::metadata(sock).is_ok() {
+        warn!("Socket {} already exists.", conn::SOCK);
         fs::remove_file(sock)?;
     }
 
     // Handle SIGINT / ^C
     let sigint_tx = tx.clone();
     ctrlc::set_handler(move || {
-        eprintln!(" Caught. Cleaning up ...");
+        warn!("^C / SIGINT Caught. Cleaning up ...");
         if fs::metadata(sock).is_ok() {
+            info!("Removing socket file");
             fs::remove_file(sock).unwrap();
         }
 
+        info!("Sending disconnect signal to ledger worker");
         sigint_tx
             .send(db::Comm::new(
                 Some(db::Kind::Disconnect),
@@ -54,12 +69,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         
         // Give the database a bit to close/encrypt
         thread::sleep(time::Duration::from_millis(50));
+        info!("¡Hasta luego!");
         process::exit(0);
     })
     .expect("SIGINT handler setup failure");
 
     // Bind to the socket. Spawn a new connection
     // worker thread for each client connection.
+    info!("Binding to socket: {}", conn::SOCK);
     spawn_for_connections(&sock, tx);
 
     // Tidy up
@@ -70,6 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) {
     // This next call opens the actual database connection.
     // It also creates the tables if they don't yet exist.
+    info!("Connecting to database: {}", db::PATH);
     let mut ledger = DB::connect(db::PATH, rx);
 
     // Naming the thread helps with debugging. It will
@@ -77,6 +95,7 @@ fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) {
     let ledger_worker = thread::Builder::new();
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
 
+    info!("Starting ledger worker process...");
     let wait = ledger_worker.spawn(move || {
         ledger.worker_thread();
         ledger.conn.close().unwrap();
@@ -85,13 +104,14 @@ fn spawn_ledger_worker_with_receiver(rx: mpsc::Receiver<db::Comm>) {
 
     // Block execution until the thread we just
     // spawned returns.
+    info!("Startup finished!");
     wait.join().unwrap();
 }
 
 fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
     let lstnr = UnixListener::bind(sock).unwrap_or_else(|_|{
-        panic!("Could not bind to socket: {}",
-        sock.to_str().unwrap())
+        error!("Could not bind to socket: {}", conn::SOCK);
+        panic!("Could not bind to socket: {}", conn::SOCK);
     });
 
     // The thread pool will always allow at least
@@ -101,14 +121,14 @@ fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
     // operations.
     let thread_num = num_cpus::get() * 4;
     let pool = ThreadPool::with_name("Client Connection".into(), thread_num);
-    eprintln!("Using pool of {} threads", thread_num);
+    info!("Using pool of {} threads", thread_num);
 
     while let Ok((conn, addr)) = lstnr.accept() {
         // This is the channel that allows
         // clients to communicate with the
         // ledger worker process.
         let trx = tx.clone();
-        eprintln!("New connection: {:?}", addr);
+        info!("New client connection: {:?}", addr);
        
         pool.execute(move || {
                 conn::init(conn, trx);

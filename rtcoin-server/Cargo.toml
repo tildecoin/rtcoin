@@ -5,17 +5,18 @@ authors = ["Ben Morrison <ben@gbmor.dev>"]
 edition = "2018"
 
 [dependencies]
-#bcrypt = "0.5"
-chrono = "0.4"
-ctrlc = "3.1"
-num_cpus = "1.10"
-#simplelog = "0.6"
-serde = "1.0"
-serde_json = "1.0"
-threadpool = "1.7"
-#zeroize = "0.9"
+#bcrypt = "^0.5"
+chrono = "^0.4"
+ctrlc = "^3.1"
+log = "^0.4.7"
+num_cpus = "^1.10"
+simplelog = "^0.6"
+serde = "^1.0"
+serde_json = "^1.0"
+threadpool = "^1.7"
+#zeroize = "^0.9"
 
 [dependencies.rusqlite]
-version = "0.19"
+version = "^0.19"
 default-features = true
 features = ["sqlcipher"]
