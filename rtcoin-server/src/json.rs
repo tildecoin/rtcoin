@@ -116,6 +116,7 @@ mod test {
 
         let (tx, _) = mpsc::channel::<db::Reply>();
         let tx2 = tx.clone();
+        let tx3 = tx.clone();
 
         let case = if let Some(val) = to_comm(&test_data, tx) {
             val
@@ -142,6 +143,16 @@ mod test {
         match case.kind() {
             db::Kind::Send => { },
             _ => panic!("Incorrect Kind: case 2"),
+        }
+
+        let test_data = json!({
+            "kind": "FOOBAR",
+            "args": "some args here"
+        });
+
+        match to_comm(&test_data, tx3) {
+            None => { },
+            _ => panic!("Received some, expected none: case 3"),
         }
     }
 
