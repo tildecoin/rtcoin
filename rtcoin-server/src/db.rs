@@ -167,7 +167,7 @@ impl DB {
     // process the incoming Comms.
     pub fn worker_thread(&mut self) {
         while let Ok(comm) = self.pipe.recv() {
-            info!("Ledger Worker :: Received Comm :: {:?}", comm);
+            info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
                 Some(Kind::Disconnect) => return,
                 _ => continue,
