@@ -20,7 +20,6 @@ use std::{
 use log::{
     info,
     error,
-    warn,
     debug,
 };
 
@@ -32,6 +31,7 @@ use crate::db;
 use crate::db::{
     Kind,
 };
+use crate::json;
 use crate::user;
 
 pub const SOCK: &str = "/tmp/rtcoinserver.sock";
@@ -100,7 +100,7 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
             debug!("conn.rs::init(), incoming.read_line(..), error: {}", err);
             panic!("{}", err);
         });   
-    let json_in: Value = str_to_json(&json_in, &mut conn).unwrap();
+    let json_in: Value = json::from_str(&json_in, Some(&mut conn)).unwrap();
 
     route(&mut conn, &json_in, &pipe);
 
@@ -116,7 +116,7 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
 // that we have received an invalid request.
 fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) {
     let (tx, rx) = mpsc::channel::<db::Reply>();
-    let comm = json_to_comm(&json_in, tx).unwrap();
+    let comm = json::to_comm(&json_in, tx).unwrap();
 
     // need to flesh out the rest of these branches. 
     // it'll probably just be logging for now.
@@ -161,27 +161,6 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
     }
 }
 
-fn str_to_json(json_in: &str, conn: &mut UnixStream) -> Option<serde_json::Value> {
-    return match serde_json::from_str(&json_in) {
-        Ok(val) => Some(val),
-        Err(err) => {
-            let err = format!("{}", err);
-            let out = ErrResp::new(02, "JSON Error", &err);
-
-            error!(
-                "\nError {}:\n{}\n{}", 
-                out.code(), 
-                out.kind(), 
-                out.details(),
-            );
-            
-            let out = out.to_bytes();
-            conn.write_all(&out).unwrap();
-            None
-        }
-    }
-}
-
 fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Option<db::Reply> {
     return match recv {
         Ok(val) => Some(val),
@@ -214,42 +193,6 @@ pub fn addr(addr: &SocketAddr) -> String {
     String::from("Unknown Thread")
 }
 
-// Deserializes a JSON Value struct into a db::Comm,
-// ready for passing to the ledger worker thread.
-// Serialize/Deserialize serde traits apparently
-// don't play well with enums.
-fn json_to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
-    let kind: db::Kind = match json["kind"].as_str()? {
-        "Register" => Kind::Register,
-        "Whoami" => Kind::Whoami,
-        "Rename" => Kind::Rename,
-        "Send" => Kind::Send,
-        "Sign" => Kind::Sign,
-        "Balance" => Kind::Balance,
-        "Verify" => Kind::Verify,
-        "Contest" => Kind::Contest,
-        "Audit" => Kind::Audit,
-        "Resolve" => Kind::Resolve,
-        "Second" => Kind::Second,
-        "Query" => Kind::Query,             // Query and Disconnect are internal
-        "Disconnect" => Kind::Disconnect,   // values for miscellaneous database
-        &_ => return None,                  // queries and shutting down the DB.
-    };
-
-    let args = json["args"].as_str()?
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-
-    Some(
-        db::Comm::new(
-            Some(kind), 
-            Some(args), 
-            Some(tx),
-        )
-    )
-}
-
 // Response when the connection worker receives an
 // external request specifying the "Disconnect" or
 // "Query" actions. Disconnect shuts down the
@@ -275,46 +218,6 @@ mod test {
         os::unix::net::UnixListener,
         path::Path,
     };
-
-    use serde_json::json;
-
-    #[test]
-    fn test_json_to_comm() {
-        let test_data = json!({
-            "kind":        "Disconnect",
-            "args":        "Source Foo"
-        });
-
-        let (tx, _) = mpsc::channel::<db::Reply>();
-        let tx2 = tx.clone();
-
-        let case = if let Some(val) = json_to_comm(&test_data, tx) {
-            val
-        } else {
-            panic!("json_to_comm() failed: case 1");
-        };
-
-        match case.kind() {
-            db::Kind::Disconnect => { },
-            _ => panic!("Incorrect Kind: case 1"),
-        }
-
-        let test_data = json!({
-            "kind":        "Send",
-            "args":        "From Foo To Bob"
-        });
-
-        let case = if let Some(val) = json_to_comm(&test_data, tx2) {
-            val
-        } else {
-            panic!("json_to_comm() failed: case 2");
-        };
-
-        match case.kind() {
-            db::Kind::Send => { },
-            _ => panic!("Incorrect Kind: case 2"),
-        }
-    }
 
     #[test]
     fn socket_addr() {

@@ -27,6 +27,7 @@ use num_cpus;
 
 mod conn;
 mod db;
+mod json;
 mod logging;
 mod user;
 
