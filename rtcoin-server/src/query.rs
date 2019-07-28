@@ -4,7 +4,6 @@
 //
 
 use log::{
-    error,
     info,
     warn,
 };
@@ -23,7 +22,7 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     let query = "SELECT * FROM users";
 
     // The log message is a LIE. Sort of.
-    info!("New query: {} WHERE name = {}", query, args[0]);
+    info!("New query: {} WHERE name = {}", query, args[1]);
     let mut rowstmt = conn.prepare(&query).unwrap();
 
     // Basically, what I'm doing here is:
@@ -46,7 +45,7 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     });
 
     let rows = rows.filter(|row| {
-        row.as_ref().unwrap()[0] == args[0]
+        row.as_ref().unwrap()[0] == args[1]
     });
 
     let rows = rows.map(|row| {
