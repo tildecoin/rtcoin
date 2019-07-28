@@ -24,7 +24,7 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
 
     // The log message is a LIE. Sort of.
     info!("New query: {} WHERE name = {}", query, args[0]);
-    let _rowstmt = conn.prepare(&query).unwrap();
+    let mut rowstmt = conn.prepare(&query).unwrap();
 
     // Basically, what I'm doing here is:
     //      * Compare the client-provided argument to
@@ -32,26 +32,32 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     //      * Return the public key of the user
     //          that matches.
     // This is to avoid a potential SQL injection
-    // from rogue clients.
-    // Having some issues with the rusqlite library
-    // and its ... wide variety of return types.
-    /*
+    // from rogue clients.    
     let rows = rowstmt.query_map(NO_PARAMS, |row| {
-        Ok(row)
+        Ok(
+            vec![
+                row.get::<usize, String>(1).unwrap().clone(),
+                row.get::<usize, String>(3).unwrap().clone(),
+            ]
+        )
     }).unwrap_or_else(|err| {
         warn!("Query failed: {}", err);
         panic!("{}", err);
     });
 
-    let out = rows.filter(|row| {
-        row.unwrap().get::<usize, String>(1).unwrap() == args[0]
+    let rows = rows.filter(|row| {
+        row.as_ref().unwrap()[0] == args[0]
     });
 
-    let out = out.map(|row| row.unwrap().get(3).unwrap()).collect::<Vec<String>>();
+    let rows = rows.map(|row| {
+        let row = row.unwrap().clone();
+        row[1].clone()
+    }).collect::<Vec<String>>();
 
-    // Like here, where we just construct the
-    // reply with index 0.
-    let reply = db::Reply::Data(out[0].clone());
+    // This should be a vec with a single item, but
+    // may include some weird artifacts like empty
+    // items.
+    let reply = db::Reply::Rows(rows.clone());
 
     if let Some(tx) = &comm.origin {
         tx.send(reply)
@@ -60,5 +66,5 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
                 panic!("{}", err);
             });
     }
-    */
+    
 }
