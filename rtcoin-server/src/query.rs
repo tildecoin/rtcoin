@@ -20,26 +20,34 @@ use crate::db;
 pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     let args = comm.args();
 
-    // This next line is insecure.
-    let query = format!("SELECT * FROM users WHERE name = '{}'", args[0]);
+    let query = "SELECT * FROM users";
 
-    info!("New query: {}", query);
-    let mut rowstmt = conn.prepare(&query).unwrap();
+    // The log message is a LIE. Sort of.
+    info!("New query: {} WHERE name = {}", query, args[0]);
+    let _rowstmt = conn.prepare(&query).unwrap();
 
+    // Basically, what I'm doing here is:
+    //      * Compare the client-provided argument to
+    //          each user name
+    //      * Return the public key of the user
+    //          that matches.
+    // This is to avoid a potential SQL injection
+    // from rogue clients.
+    // Having some issues with the rusqlite library
+    // and its ... wide variety of return types.
+    /*
     let rows = rowstmt.query_map(NO_PARAMS, |row| {
-        Ok(row.get(3).unwrap())
+        Ok(row)
     }).unwrap_or_else(|err| {
-        error!("Failed to query Whoami: {}", err);
-        panic!("{}");
+        warn!("Query failed: {}", err);
+        panic!("{}", err);
     });
 
-    // There should only be one matching row,
-    // but we still should treat it as multiple
-    // and process it from there.
-    let out = rows.map(|row| {
-        row.unwrap()
-    })
-    .collect::<Vec<String>>();
+    let out = rows.filter(|row| {
+        row.unwrap().get::<usize, String>(1).unwrap() == args[0]
+    });
+
+    let out = out.map(|row| row.unwrap().get(3).unwrap()).collect::<Vec<String>>();
 
     // Like here, where we just construct the
     // reply with index 0.
@@ -52,4 +60,5 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
                 panic!("{}", err);
             });
     }
+    */
 }
