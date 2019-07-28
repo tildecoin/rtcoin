@@ -22,6 +22,11 @@ use rusqlite::{
 
 use zeroize::Zeroize;
 
+use crate::{
+    user,
+    query,
+};
+
 pub const PATH: &str = "/tmp/rtcoinledger.db";
 
 // Wrapper for the database connection and the
@@ -37,9 +42,9 @@ pub struct DB {
 // Includes an outbound channel for the response.
 #[derive(Debug)]
 pub struct Comm {
-    kind: Option<Kind>,
-    args: Option<Vec<String>>,
-    origin: Option<mpsc::Sender<Reply>>,
+    pub kind: Option<Kind>,
+    pub args: Option<Vec<String>>,
+    pub origin: Option<mpsc::Sender<Reply>>,
 }
 
 // Type of transaction we're doing with the
@@ -96,6 +101,18 @@ pub struct ArchiveEntry {
     pub merkle_hash: Vec<u8>,
     pub hash: String,
     pub filename: String,
+}
+
+#[derive(Debug)]
+pub struct UserEntry {
+    pub id: u32,
+    pub name: String,
+    pub pass: String,
+    pub pubkey: String,
+    pub balance: f64,
+    pub messages: Vec<String>,
+    pub created: String,
+    pub last_login: String,
 }
 
 impl Comm {
@@ -174,9 +191,20 @@ impl DB {
         while let Ok(comm) = self.pipe.recv() {
             info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
+                Some(Kind::Register) => user::register(&comm),
+                Some(Kind::Whoami) => query::whoami(&comm, &self.conn),
+                Some(Kind::Rename) => { },
+                Some(Kind::Send) => { },
+                Some(Kind::Sign) => { },
+                Some(Kind::Balance) => { },
+                Some(Kind::Verify) => { },
+                Some(Kind::Contest) => { },
+                Some(Kind::Audit) => { },
+                Some(Kind::Resolve) => { },
+                Some(Kind::Second) => { },
                 Some(Kind::Disconnect) => return,
                 _ => continue,
-            }
+            };
         }
     }
 }
@@ -218,6 +246,7 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 name        TEXT,
                 pass        TEXT,
+                pubkey      TEXT,
                 balance     REAL,
                 messages    TEXT,
                 created     TEXT,

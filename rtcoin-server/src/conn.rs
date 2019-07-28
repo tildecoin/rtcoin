@@ -118,20 +118,8 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
     let (tx, rx) = mpsc::channel::<db::Reply>();
     let comm = json::to_comm(&json_in, tx).unwrap();
 
-    // need to flesh out the rest of these branches. 
-    // it'll probably just be logging for now.
+    // Filter out the queries users shouldn't make
     match comm.kind() {
-        Kind::Register => user::register(&json_in),
-        Kind::Whoami => { },
-        Kind::Rename => { },
-        Kind::Send => { },
-        Kind::Sign => { },
-        Kind::Balance => { },
-        Kind::Verify => { },
-        Kind::Contest => { },
-        Kind::Audit => { },
-        Kind::Resolve => { },
-        Kind::Second => { },
         Kind::Disconnect => {
             invalid_request(conn, "Disconnect");
             return
@@ -140,10 +128,7 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
             invalid_request(conn, "Query");
             return
          },
-         &_ => {
-             invalid_request(conn, "Unknown request type");
-             return
-         },
+         _ => { },
     }
 
     pipe.send(comm).unwrap();

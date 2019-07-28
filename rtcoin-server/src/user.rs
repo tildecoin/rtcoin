@@ -16,12 +16,12 @@ use std::{
 
 use chrono::prelude::*;
 use log::{
-    debug,
     error,
-    info,
-    warn,
 };
-use serde_json;
+
+use crate::{
+    db,
+};
 
 // Leaving the fields private to prevent
 // some funny business with the balances
@@ -133,7 +133,7 @@ impl User {
     }
 }
 
-pub fn register(_json: &serde_json::Value) {
+pub fn register(_comm: &db::Comm) {
     // placeholder
     error!("{:#?}", InitCode::Fail(String::from("Unspecified Error")));
 }

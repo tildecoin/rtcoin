@@ -32,6 +32,7 @@ mod conn;
 mod db;
 mod json;
 mod logging;
+mod query;
 mod user;
 
 use db::DB;
