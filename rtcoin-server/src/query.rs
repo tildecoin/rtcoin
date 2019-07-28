@@ -35,8 +35,8 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     let rows = rowstmt.query_map(NO_PARAMS, |row| {
         Ok(
             vec![
-                row.get::<usize, String>(1).unwrap().clone(),
-                row.get::<usize, String>(3).unwrap().clone(),
+                row.get::<usize, String>(1).unwrap(),
+                row.get::<usize, String>(3).unwrap(),
             ]
         )
     }).unwrap_or_else(|err| {
@@ -49,7 +49,7 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     });
 
     let rows = rows.map(|row| {
-        let row = row.unwrap().clone();
+        let row = row.unwrap();
         row[1].clone()
     }).collect::<Vec<String>>();
 
