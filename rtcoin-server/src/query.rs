@@ -19,6 +19,8 @@ use crate::db;
 // with the account.
 pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     let args = comm.args();
+
+    // This next line is insecure.
     let query = format!("SELECT * FROM users WHERE name = '{}'", args[0]);
 
     info!("New query: {}", query);
