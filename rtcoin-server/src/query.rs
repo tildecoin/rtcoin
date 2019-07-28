@@ -13,8 +13,9 @@ use rusqlite::{
 };
 use crate::db;
 
-// Accepts the comm of kind Whoami and arg of just a 
-// username. Responds with the public key associated 
+// Accepts the comm of kind Whoami and arg of
+//     vec["user", (username)]
+// Responds with the public key associated 
 // with the account.
 pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     let args = comm.args();
@@ -65,5 +66,4 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
                 panic!("{}", err);
             });
     }
-    
 }
