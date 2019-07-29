@@ -19,45 +19,27 @@ use crate::db;
 // with the account.
 pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     let args = comm.args();
+    let query = "SELECT pubkey FROM users WHERE name = :name";
 
-    let query = "SELECT * FROM users";
-
-    // The log message is a LIE. Sort of.
-    info!("New query: {} WHERE name = {}", query, args[1]);
+    info!("New query: {}, {}", query, args[1]);
     let mut rowstmt = conn.prepare(&query).unwrap();
 
-    // Basically, what I'm doing here is:
-    //      * Compare the client-provided argument to
-    //          each user name
-    //      * Return the public key of the user
-    //          that matches.
-    // This is to avoid a potential SQL injection
-    // from rogue clients.    
-    let rows = rowstmt.query_map(NO_PARAMS, |row| {
-        Ok(
-            vec![
-                row.get::<usize, String>(1).unwrap(),
-                row.get::<usize, String>(3).unwrap(),
-            ]
-        )
-    }).unwrap_or_else(|err| {
-        warn!("Query failed: {}", err);
-        panic!("{}", err);
-    });
+    let rows = rowstmt.query_map_named(
+        &[(":name", &args[1])], 
+        |row| {
+            Ok(row.get::<usize, String>(0).unwrap())
+        })
+        .unwrap_or_else(|err| {
+            warn!("Query failed: {}", err);
+            panic!("{}", err);
+        });
 
-    let rows = rows.filter(|row| {
-        row.as_ref().unwrap()[0] == args[1]
-    });
+    let pubkey = rows.map(|row| {
+            row.unwrap()
+        })
+        .collect::<String>();
 
-    let rows = rows.map(|row| {
-        let row = row.unwrap();
-        row[1].clone()
-    }).collect::<Vec<String>>();
-
-    // This should be a vec with a single item, but
-    // may include some weird artifacts like empty
-    // items.
-    let reply = db::Reply::Rows(rows.clone());
+    let reply = db::Reply::Data(pubkey.clone());
 
     if let Some(tx) = &comm.origin {
         tx.send(reply)
