@@ -10,6 +10,7 @@ use std::{
 use chrono::prelude::*;
 use log::{
     error,
+    info,
 };
 
 use crate::{
@@ -19,11 +20,11 @@ use crate::{
 #[derive(Debug)]
 pub struct User {
     name: String,
-    created: chrono::DateTime<Utc>,
-    pass: Vec<u8>,
+    created: String,
+    pass: String,
     balance: f64,
     messages: Vec<String>,
-    last_login: chrono::DateTime<Utc>,
+    last_login: String,
 }
 
 #[derive(Debug)]
@@ -37,35 +38,42 @@ pub enum InitCode {
 // be formatted like so:
 //  Name: Bob Bobson
 //  Balance: 1000.0 tcoin
-//  Last Login: chrono::DateTime<Utc>
-//  Account Age: chrono::OldDuration
+//  Last Login: String (RFC2822)
+//  Account Age: String (Weeks, Days, Hours)
 impl fmt::Display for User {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let since = Utc::now().signed_duration_since(self.created);
+        let created = DateTime::parse_from_rfc2822(&self.created).unwrap();
+        let since = Utc::now().signed_duration_since(created);
+        let acct_age = format!(
+                "{} weeks, {} days, {} hours", 
+                since.num_weeks(),
+                since.num_days(),
+                since.num_hours()
+            );
 
         write!(
             f,
             " Name: {}\n Balance: {} tcoin\n Last Login: {}\n Account Age: {}",
             self.name(),
             self.balance_as_string(),
-            self.last_login.to_string(),
-            since.to_string()
+            self.last_login,
+            acct_age
         )
     }
 }
 
 impl User {
     pub fn new(name: &str) -> User {
-        let pass: Vec<u8> = vec![1, 0, 1, 0, 1];
+        let pass = String::new();
         let name = name.to_string();
-        let now = Utc::now();
+        let now = Utc::now().to_rfc2822();
 
         User {
             name,
-            created: now,
+            created: now.clone(),
             pass,
             balance: 1000.0,
-            messages: Vec::with_capacity(10),
+            messages: Vec::new(),
             last_login: now,
         }
     }
@@ -87,6 +95,7 @@ impl User {
 pub fn register(_comm: &db::Comm) {
     // placeholder
     error!("{:#?}", InitCode::Fail(String::from("Unspecified Error")));
+    info!("{:#?}", InitCode::Success);
 }
 
 #[cfg(test)]
