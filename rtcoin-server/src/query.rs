@@ -21,22 +21,17 @@ pub fn whoami(comm: &db::Comm, conn: &rusqlite::Connection) {
     info!("New query: {}, {}", query, args[1]);
     let mut rowstmt = conn.prepare(&query).unwrap();
 
-    let rows = rowstmt.query_map_named(
+    let row = rowstmt.query_row_named(
         &[(":name", &args[1])], 
         |row| {
-            Ok(row.get::<usize, String>(0).unwrap())
+            Ok(row.get(0).unwrap())
         })
         .unwrap_or_else(|err| {
             warn!("Query failed: {}", err);
             panic!("{}", err);
         });
 
-    let pubkey = rows.map(|row| {
-            row.unwrap()
-        })
-        .collect::<String>();
-
-    let reply = db::Reply::Data(pubkey.clone());
+    let reply = db::Reply::Data(row);
 
     if let Some(tx) = &comm.origin {
         tx.send(reply)
