@@ -3,13 +3,6 @@
 // See LICENSE file for detailed license information.
 //
 
-// This file currently only contains placeholder
-// functions and structures for the sake of
-// organization. None of the following will be
-// making it into rtcoin -- it will all be rewritten
-// with actual functionality once I start on user
-// methods.
-
 use std::{
     fmt,
 };
@@ -23,9 +16,6 @@ use crate::{
     db,
 };
 
-// Leaving the fields private to prevent
-// some funny business with the balances
-// or the passwords.
 #[derive(Debug)]
 pub struct User {
     name: String,
@@ -64,9 +54,6 @@ impl fmt::Display for User {
     }
 }
 
-// Most of the following is TERRIBLE.
-// I super pinky promise I'm going to rewrite
-// it soon.
 impl User {
     pub fn new(name: &str) -> User {
         let pass: Vec<u8> = vec![1, 0, 1, 0, 1];
