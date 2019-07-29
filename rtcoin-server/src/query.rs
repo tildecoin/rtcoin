@@ -8,9 +8,6 @@ use log::{
     warn,
 };
 use rusqlite;
-use rusqlite::{
-    NO_PARAMS,
-};
 use crate::db;
 
 // Accepts the comm of kind Whoami and arg of
