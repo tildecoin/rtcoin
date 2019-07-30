@@ -213,15 +213,15 @@ impl DB {
 fn startup_check_tables(conn: &rusqlite::Connection) {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS ledger (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT, 
-                type            TEXT, 
-                timestamp       TEXT, 
-                source          TEXT, 
-                destination     TEXT, 
-                amount          REAL, 
-                ledger_hash     TEXT, 
-                receipt_id      INTEGER, 
-                receipt_hash    TEXT
+                id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                type            TEXT NOT NULL, 
+                timestamp       TEXT NOT NULL, 
+                source          TEXT NOT NULL, 
+                destination     TEXT NOT NULL, 
+                amount          REAL NOT NULL, 
+                ledger_hash     TEXT NOT NULL, 
+                receipt_id      INTEGER NOT NULL, 
+                receipt_hash    TEXT NOT NULL
             )",
             NO_PARAMS,
         )
@@ -229,13 +229,13 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS archive (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                type            TEXT,
-                timestamp       TEXT,
-                state           TEXT,
-                merkle_hash     TEXT,
-                hash            TEXT,
-                filename        TEXT
+                id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type            TEXT NOT NULL,
+                timestamp       TEXT NOT NULL,
+                state           TEXT NOT NULL,
+                merkle_hash     TEXT NOT NULL,
+                hash            TEXT NOT NULL,
+                filename        TEXT NOT NULL
             )",
             NO_PARAMS,
         )
@@ -243,14 +243,14 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS users (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                name        TEXT,
-                pass        TEXT,
-                pubkey      TEXT,
-                balance     REAL,
+                id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name        TEXT NOT NULL,
+                pass        TEXT NOT NULL,
+                pubkey      TEXT NOT NULL,
+                balance     REAL NOT NULL,
                 messages    TEXT,
-                created     TEXT,
-                last_login  TEXT
+                created     TEXT NOT NULL,
+                last_login  TEXT NOT NULL
             )",
             NO_PARAMS,
         )
