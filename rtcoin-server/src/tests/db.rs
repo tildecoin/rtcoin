@@ -13,7 +13,7 @@ use std::{
 
 #[test]
 fn worker_thread_spawn_send_recv_serialize_rows() {
-    let path = PATH;
+    let path = "/tmp/rtcoinserver-test.db";
     let (worker_tx, pipe) = mpsc::channel::<Comm>();
     let db = DB::connect(path, "test".into(), pipe);
 
@@ -53,6 +53,8 @@ fn worker_thread_spawn_send_recv_serialize_rows() {
     //rx_case1.recv().unwrap();
     //rx_case2.recv().unwrap();
 
+    worker_tx.send(Comm::new(Some(Kind::Disconnect), None, None)).unwrap();
+    
     if fs::metadata(path).is_ok() {
         fs::remove_file(path).unwrap();
     }
