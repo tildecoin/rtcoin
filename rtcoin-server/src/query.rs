@@ -58,28 +58,3 @@ pub fn whoami(comm: db::Comm, conn: &rusqlite::Connection) {
         error!("Failed to send reply: {}", err);
     }
 }
-
-#[cfg(test)]
-mod test {
-    use std::sync::mpsc;
-    use super::*;
-
-    #[test]
-    fn expect_no_rows() {
-        let (dbtx, dbrx) = mpsc::channel::<db::Comm>();
-        let db = db::DB::connect(db::PATH, String::from(" "), dbrx);
-        let (commtx, commrx) = mpsc::channel::<db::Reply>();
-        let comm = db::Comm::new(
-                Some(db::Kind::Whoami), 
-                Some(vec!["user".into(), "BobBobson".into()]), 
-                Some(commtx)
-            );
-
-        whoami(comm, &db.conn);
-        let resp = commrx.recv().unwrap();
-        let resp = format!("{:?}", resp);
-
-        assert!(resp.contains("Query Error"));
-        dbtx.send(db::Comm::new(Some(db::Kind::Disconnect), None, None)).unwrap();
-    }
-}

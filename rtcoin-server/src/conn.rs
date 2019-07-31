@@ -134,18 +134,3 @@ fn invalid_request(conn: &mut UnixStream, kind: &str) {
     conn.write_all(&msg).unwrap();
     conn.shutdown(Shutdown::Both).unwrap();
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn msg_resp() {
-        let out = err::Resp::new(00, "Test Error", "");
-        let code = out.code();
-        let kind = out.kind();
-        
-        assert_eq!(code, 00);
-        assert_eq!(kind, "Test Error");
-    }
-}

@@ -61,20 +61,3 @@ impl Resp {
         self.details.clone()
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn basic_resp_test() {
-        let err = Resp::new(05, "Test Error", "Some stuff went wrong");
-        let code = err.code();
-        let kind = err.kind();
-        let details = err.details();
-
-        assert_eq!(code, 05);
-        assert_eq!(kind, "Test Error");
-        assert_eq!(details, "Some stuff went wrong");
-    }
-}

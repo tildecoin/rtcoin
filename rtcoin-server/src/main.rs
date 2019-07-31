@@ -6,7 +6,6 @@
 use std::{
     error::Error, 
     fs,
-    io,
     os::unix::net::UnixListener, 
     path::Path, 
     process, 
@@ -35,6 +34,9 @@ mod json;
 mod logging;
 mod query;
 mod user;
+
+#[cfg(test)]
+mod tests;
 
 use db::DB;
 

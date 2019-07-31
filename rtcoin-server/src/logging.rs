@@ -41,19 +41,4 @@ pub fn init() {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use log::info;
-    use std::fs;
-
-    #[test]
-    fn check_init() {
-        init();
-        assert!(fs::metadata(FILE).is_ok());
-        
-        info!("test");
-        let log_out = fs::read_to_string(FILE).unwrap();
-
-        assert!(log_out.contains("test"));
-        assert!(log_out.contains("INFO"));
-    }
 }

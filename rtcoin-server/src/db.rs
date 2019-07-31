@@ -262,7 +262,7 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
 
 // Deserializes the rows returned from a query into
 // a Vec of the LedgerEntry struct.
-fn deserialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
+pub fn deserialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
     let mut stmt = stmt;
     let rows = stmt.query_map(NO_PARAMS, |row| {
         Ok(LedgerEntry {
@@ -284,86 +284,4 @@ fn deserialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<d
         })
         .collect::<Vec<LedgerEntry>>()
     )
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    use std::{
-        fs,
-        thread,
-    };
-
-    #[test]
-    fn worker_thread_spawn_send_recv_serialize_rows() {
-        let path = "./test-db";
-        let (worker_tx, pipe) = mpsc::channel::<Comm>();
-        let test_key = "something something password";
-        let mut db = DB::connect(path, test_key.into(), pipe);
-
-        assert!(fs::metadata(path).is_ok());
-
-        let kind = Kind::Balance;
-        let args: Vec<String> = vec!["Bob".into()];
-        let (tx_case1, _rx_case1) = mpsc::channel::<Reply>();
-        let comm = Comm::new(Some(kind), Some(args), Some(tx_case1));
-
-        let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
-        let stmt = db.conn.prepare(stmt).unwrap();
-
-        if let Err(_) = deserialize_rows(stmt) {
-            panic!("failure in serialize_rows()");
-        }
-        
-        // Above, comm takes ownership of the previous
-        // instances of kind and trans. Need to duplicate
-        // to test bulk_query(). Also, Clone isn't implemented
-        // on db::Comm yet.
-        let kind = Kind::Query;
-        let args: Vec<String> = vec!["src".into(), "Bob".into()];
-        let (tx_case2, _rx_case2) = mpsc::channel::<Reply>();
-        let comm2 = Comm::new(Some(kind), Some(args), Some(tx_case2));
-
-        thread::spawn(move || {
-            db.worker_thread();
-        });
-        
-        worker_tx.send(comm).unwrap();
-        worker_tx.send(comm2).unwrap();
-
-        // the worker passes the comm packet to bulk_query(),
-        // which hands it off to serialize_rows() before sending
-        // it back down the channel to be received here.
-        //rx_case1.recv().unwrap();
-        //rx_case2.recv().unwrap();
-
-        if fs::metadata(path).is_ok() {
-            fs::remove_file(path).unwrap();
-        }
-    }
-
-    #[test]
-    fn comm_kind() {
-        let (tx, _) = mpsc::channel::<Reply>();
-        let kind = Kind::Query;
-        let args: Vec<String> = vec!["Source".into(),"Bob".into()];
-        let comm = Comm::new(Some(kind), Some(args), Some(tx));
-
-        match comm.kind() {
-            Kind::Query => { },
-            _ => panic!("Incorrect Kind"),
-        }
-
-        let arg1 = comm.args()[0].clone();
-        let arg2 = comm.args()[1].clone();
-        match &arg1[..] {
-            "Source" => { },
-            _ => panic!("Incorrect arguments"),
-        }
-        match &arg2[..] {
-            "Bob" => { },
-            _ => panic!("Incorrect arguments"),
-        }
-    }
 }
