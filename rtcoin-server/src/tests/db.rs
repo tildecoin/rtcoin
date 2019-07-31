@@ -13,10 +13,9 @@ use std::{
 
 #[test]
 fn worker_thread_spawn_send_recv_serialize_rows() {
-    let path = "./test-db";
+    let path = PATH;
     let (worker_tx, pipe) = mpsc::channel::<Comm>();
-    let test_key = "something something password";
-    let mut db = DB::connect(path, test_key.into(), pipe);
+    let db = DB::connect(path, "test".into(), pipe);
 
     assert!(fs::metadata(path).is_ok());
 
