@@ -42,8 +42,7 @@ for `rtcoin` as of `24 July 2019`
 * Receives signed JSON requests via UNIX Domain Socket.
     * kind: the `enum` type of request mentioned in the Ledger Worker section.
     * args: arguments of the request. The argument string will be interpreted differently based on the kind of request.
-        * The specific request schema will be worked out as needed.
-        * `{ "kind": "whoami", "args": "foo_barrington" }`
+    * `{ "kind": "whoami", "args": "foo_barrington" }`
 * Verifies signature of each request. If it fails, let the client know, then disconnect/die.
 * Unpacks the JSON into a request struct.
 * Sends the request to the Ledger Worker along its channel.
@@ -51,7 +50,7 @@ for `rtcoin` as of `24 July 2019`
 * JSON for a response to a given client is serialized from the following:
 * `enum db::Reply` contains:
     * `Data(String)`,
-    * `Error(err::Resp as String),
+    * `Error(err::Resp as String)`,
     * `Rows(Vec<String>)` (columns for each row are tab-delineated)
 * `err::Resp` contains the fields:
     * `u32` code: numeric identifier for the error. The errors are enumerated in `err.rs`.
