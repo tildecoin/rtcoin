@@ -79,12 +79,12 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
         Kind::Disconnect => {
             invalid_request(conn, "Disconnect");
             return
-         },
+        }
         Kind::Query => {
             invalid_request(conn, "Query");
             return
-         },
-         _ => { },
+         }
+         _ => { }
     }
 
     pipe.send(comm).unwrap();

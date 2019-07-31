@@ -11,7 +11,6 @@ use std::{
     process, 
     sync::mpsc, 
     thread,
-    time,
 };
 
 use ctrlc;
@@ -71,7 +70,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Handle SIGINT / ^C
-    let sigint_tx = tx.clone();
+    let ctrlc_tx = tx.clone();
     ctrlc::set_handler(move || {
         warn!("^C / SIGINT Caught. Cleaning up ...");
         if fs::metadata(sock).is_ok() {
@@ -79,17 +78,25 @@ fn main() -> Result<(), Box<dyn Error>> {
             fs::remove_file(sock).unwrap();
         }
 
-        info!("Sending disconnect signal to ledger worker");
-        sigint_tx
-            .send(db::Comm::new(
+        info!("SIGINT: Sending disconnect signal to ledger worker queue");
+        let (reply_tx, sigint_rx) = mpsc::channel::<db::Reply>();
+        let db_disconnect_signal = db::Comm::new(
                 Some(db::Kind::Disconnect),
                 None,
-                None
-            ))
-            .expect("Failed to send disconnect comm to ledger worker");
+                Some(reply_tx),
+            );
+
+        match ctrlc_tx.send(db_disconnect_signal) {
+            Ok(_) => { },
+            Err(err) => error!("SIGINT: Failed to send disconnect signal to ledger worker: {}", err),
+        }
         
-        // Give the database a bit to close/encrypt
-        thread::sleep(time::Duration::from_millis(50));
+        // Block to allow database to close
+        match sigint_rx.recv() {
+            Ok(_) => { },
+            Err(_) => { },
+        }
+        
         info!("¡Hasta luego!");
         process::exit(0);
     })
@@ -109,7 +116,7 @@ fn spawn_ledger_worker_with_receiver(db_key: String, rx: mpsc::Receiver<db::Comm
     // This next call opens the actual database connection.
     // It also creates the tables if they don't yet exist.
     info!("Connecting to database: {}", db::PATH);
-    let mut ledger = DB::connect(db::PATH, db_key.clone(), rx);
+    let ledger = DB::connect(db::PATH, db_key.clone(), rx);
     let mut db_key = db_key;
     db_key.zeroize();
 
@@ -119,29 +126,33 @@ fn spawn_ledger_worker_with_receiver(db_key: String, rx: mpsc::Receiver<db::Comm
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
 
     info!("Starting ledger worker process...");
-    let wait = ledger_worker.spawn(move || {
+    let worker_thread = ledger_worker.spawn(move || {
         ledger.worker_thread();
-        ledger.conn.close().unwrap();
+        match ledger.conn.close() {
+            Err(err) => error!("Error closing database connection: {:?}", err),
+            Ok(_) => info!("Database connection successfully closed"),
+        }
     })
     .expect("Ledger worker failed to spawn");
 
     // Block execution until the thread we just
     // spawned returns.
     info!("Startup finished!");
-    wait.join().unwrap();
+    worker_thread.join().unwrap_or_else(|_| ());
 }
 
 fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
-    let lstnr = UnixListener::bind(sock).unwrap_or_else(|_|{
-        error!("Could not bind to socket: {}", conn::SOCK);
-        panic!("Could not bind to socket: {}", conn::SOCK);
-    });
+    let lstnr = UnixListener::bind(sock)
+        .unwrap_or_else(|err|{
+            let msg = format!("Could not bind to socket {} :: {}", conn::SOCK, err);
+            error!("{}", msg);
+            panic!("{}", msg);
+        });
 
     // The thread pool will always allow at least
-    // four simultaneous client connections. I chose 
-    // this multiplier because the client connections 
-    // will generally not exec resource intensive 
-    // operations.
+    // four simultaneous client connections. The 
+    // client connections will most likely not be
+    // resource hogs.
     let thread_num = num_cpus::get() * 4;
     let pool = ThreadPool::with_name("Client Connection".into(), thread_num);
     info!("Using pool of {} threads", thread_num);

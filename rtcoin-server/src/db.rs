@@ -190,7 +190,7 @@ impl DB {
 
     // Continually read from the channel to
     // process the incoming Comms.
-    pub fn worker_thread(&mut self) {
+    pub fn worker_thread(&self) {
         while let Ok(comm) = self.pipe.recv() {
             info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
@@ -205,6 +205,7 @@ impl DB {
                 Some(Kind::Audit) => { },
                 Some(Kind::Resolve) => { },
                 Some(Kind::Second) => { },
+                Some(Kind::Query) => { },
                 Some(Kind::Disconnect) => return,
                 _ => continue,
             };
