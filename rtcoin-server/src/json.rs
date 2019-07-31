@@ -23,20 +23,22 @@ use log::error;
 // Serialize/Deserialize serde traits apparently
 // don't play well with enums.
 pub fn to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
-    let kind: db::Kind = match json["kind"].as_str()? {
-        "Register" => Kind::Register,
-        "Whoami" => Kind::Whoami,
-        "Rename" => Kind::Rename,
-        "Send" => Kind::Send,
-        "Sign" => Kind::Sign,
-        "Balance" => Kind::Balance,
-        "Verify" => Kind::Verify,
-        "Contest" => Kind::Contest,
-        "Audit" => Kind::Audit,
-        "Resolve" => Kind::Resolve,
-        "Second" => Kind::Second,
-        "Query" => Kind::Query,             // Query and Disconnect are internal
-        "Disconnect" => Kind::Disconnect,   // values for miscellaneous database
+    let json_kind = json["kind"].as_str()?;
+    let json_kind = json_kind.to_lowercase();
+    let kind: db::Kind = match &json_kind[..] {
+        "register" => Kind::Register,
+        "whoami" => Kind::Whoami,
+        "rename" => Kind::Rename,
+        "send" => Kind::Send,
+        "sign" => Kind::Sign,
+        "balance" => Kind::Balance,
+        "verify" => Kind::Verify,
+        "contest" => Kind::Contest,
+        "audit" => Kind::Audit,
+        "resolve" => Kind::Resolve,
+        "second" => Kind::Second,
+        "query" => Kind::Query,             // Query and Disconnect are internal
+        "disconnect" => Kind::Disconnect,   // values for miscellaneous database
         &_ => return None,                  // queries and shutting down the DB.
     };
 
