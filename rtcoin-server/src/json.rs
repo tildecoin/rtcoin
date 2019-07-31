@@ -9,13 +9,11 @@ use std::{
     sync::mpsc,
 };
 
-use crate::conn::{
-    ErrResp,
-};
 use crate::db;
 use crate::db::{
     Kind,
 };
+use crate::err;
 
 use serde_json::Value;
 use log::error;
@@ -64,7 +62,7 @@ pub fn from_str(json_in: &str, conn: Option<&mut UnixStream>) -> Option<serde_js
         Ok(val) => Some(val),
         Err(err) => {
             let err = format!("{}", err);
-            let out = ErrResp::new(02, "JSON Error", &err);
+            let out = err::Resp::new(02, "JSON Error", &err);
 
             error!(
                 "\nError {}:\n{}\n{}", 

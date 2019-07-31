@@ -11,7 +11,6 @@ use std::{
     },
     net::Shutdown,
     os::unix::net::{
-        SocketAddr, 
         UnixStream,
     },
     sync::mpsc,
@@ -31,52 +30,10 @@ use crate::db;
 use crate::db::{
     Kind,
 };
+use crate::err;
 use crate::json;
-use crate::user;
 
 pub const SOCK: &str = "/tmp/rtcoinserver.sock";
-
-// Used for quickly serializing an error into bytes
-// so that it may be sent across the socket. 
-// Current error codes:
-//      01: Worker error
-//      02: Could not parse request as JSON
-//      03: Invalid request
-#[derive(Debug)]
-pub struct ErrResp {
-    code: u32,
-    kind: String,
-    details: String,
-}
-
-// These are fairly self-explanatory, boilerplate
-// methods for structs with private fields.
-impl ErrResp {
-    pub fn new(code: u32, err: &str, details: &str) -> ErrResp {
-        let kind = err.to_string();
-        let details = details.to_string();
-        ErrResp {
-            code,
-            kind,
-            details,
-        }
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        format!("{:#?}", self)
-            .as_bytes()
-            .to_owned()
-    }
-    pub fn code(&self) -> u32 {
-        self.code
-    }
-    pub fn kind(&self) -> String {
-        self.kind.clone()
-    }
-    pub fn details(&self) -> String {
-        self.details.clone()
-    }
-}
 
 // First handler for each new connection.
 pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
@@ -112,8 +69,7 @@ pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
 // This handles the routing of requests from *clients*
 // Internally-generated requests will bypass this
 // function and be sent directly to the Ledger Worker
-// thread. If those are detected, respond to the client
-// that we have received an invalid request.
+// thread.
 fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) {
     let (tx, rx) = mpsc::channel::<db::Reply>();
     let comm = json::to_comm(&json_in, tx).unwrap();
@@ -136,7 +92,7 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
 
     if resp.is_none() {
         info!("Closing client connection");
-        let out = ErrResp::new(01, "Worker Error", "No response from worker. Closing connection.").to_bytes();
+        let out = err::Resp::new(01, "Worker Error", "No response from worker. Closing connection.").to_bytes();
         conn.write_all(&out).unwrap();
         conn.shutdown(Shutdown::Both).unwrap();
     
@@ -152,7 +108,7 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
         Err(err) => {
             let err = format!("{}", err);
             
-            let out = ErrResp::new(01, "Worker Error", &err);
+            let out = err::Resp::new(01, "Worker Error", &err);
 
             let out = out.to_bytes();
             conn.write_all(&out).unwrap();
@@ -163,21 +119,6 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
     }
 }
 
-// Grabs the connection's peer address. Used to
-// name the thread spawned for the connection
-// so we can better pinpoint which thread caused
-// a given problem during debugging.
-pub fn addr(addr: &SocketAddr) -> String {
-    if let Some(n) = addr.as_pathname() {
-        let path = n;
-        if let Some(n) = path.to_str() {
-            return n.to_string();
-        };
-    };
-
-    String::from("Unknown Thread")
-}
-
 // Response when the connection worker receives an
 // external request specifying the "Disconnect" or
 // "Query" actions. Disconnect shuts down the
@@ -185,7 +126,7 @@ pub fn addr(addr: &SocketAddr) -> String {
 // queries against the ledger database.
 fn invalid_request(conn: &mut UnixStream, kind: &str) {
     let details = format!("\"{}\" is not an allowed request type", kind);
-    let msg = ErrResp::new(03, "Invalid Request", &details);
+    let msg = err::Resp::new(03, "Invalid Request", &details);
     let msg = msg.to_bytes();
 
     error!("Received invalid request from client: {}", details);
@@ -198,41 +139,9 @@ fn invalid_request(conn: &mut UnixStream, kind: &str) {
 mod test {
     use super::*;
 
-    use std::{
-        fs,
-        os::unix::net::UnixListener,
-        path::Path,
-    };
-
-    #[test]
-    fn socket_addr() {
-        let sock_path = Path::new("test-sock");
-        let sock = UnixListener::bind(sock_path).unwrap();
-
-        let addy = sock.local_addr().unwrap();
-        let name = addr(&addy);
-
-        assert_eq!(name, "test-sock");
-
-        if fs::metadata(sock_path).is_ok() {
-            fs::remove_file(sock_path).unwrap();
-        }
-    }
-
-    #[test]
-    fn socket_addr_fail() {
-        let sock_path = Path::new("");
-        let sock = UnixListener::bind(sock_path).unwrap();
-
-        let addy = sock.local_addr().unwrap();
-        let name = addr(&addy);
-
-        assert_eq!(name, "Unknown Thread");
-    }
-
     #[test]
     fn msg_resp() {
-        let out = ErrResp::new(00, "Test Error", "");
+        let out = err::Resp::new(00, "Test Error", "");
         let code = out.code();
         let kind = out.kind();
         

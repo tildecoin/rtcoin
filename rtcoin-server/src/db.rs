@@ -40,7 +40,7 @@ pub struct DB {
 // Represents a single request, or communication,
 // intended for the database worker thread.
 // Includes an outbound channel for the response.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Comm {
     pub kind: Option<Kind>,
     pub args: Option<Vec<String>>,
@@ -49,7 +49,7 @@ pub struct Comm {
 
 // Type of transaction we're doing with the
 // database.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Kind {
     Register,
     Query,
@@ -69,10 +69,13 @@ pub enum Kind {
 
 // When rows are serialized into plain text
 // and packed into this enum, they are tab-separated
-// to delineate columns.
+// to delineate columns. To make the reply route
+// monomorphic, err::Resp will be converted to
+// a string and packed into Reply::Data()
 #[derive(Debug, Clone)]
 pub enum Reply {
     Data(String),
+    Error(String),
     Rows(Vec<String>),
 }
 
@@ -192,7 +195,7 @@ impl DB {
             info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
                 Some(Kind::Register) => user::register(&comm),
-                Some(Kind::Whoami) => query::whoami(&comm, &self.conn),
+                Some(Kind::Whoami) => query::whoami(comm, &self.conn),
                 Some(Kind::Rename) => { },
                 Some(Kind::Send) => { },
                 Some(Kind::Sign) => { },

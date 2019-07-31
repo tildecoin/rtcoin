@@ -30,6 +30,7 @@ use zeroize::Zeroize;
 
 mod conn;
 mod db;
+mod err;
 mod json;
 mod logging;
 mod query;
