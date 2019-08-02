@@ -1,7 +1,7 @@
 # Development Plan
 
 This document represents the current expected blueprint
-for `rtcoin` as of `24 July 2019`
+for `rtcoin` as of `02 August 2019`
 
 *Not Finalized*
 
@@ -11,20 +11,21 @@ for `rtcoin` as of `24 July 2019`
 
 **Ledger Database**
 * libsqlcipher's native `AES-256` encryption will be used.
-* Will prompt for a database password on startup. This will present additional complexity when attempting to control `rtcoin-server` from a traditional init system. However, this is a trade-off to make for additional security.
+* Will prompt for a database password on startup. This will present additional complexity when attempting to control `rtcoin-server` from a traditional init system. However, this is a trade-off to make for additional security when compared to a stored password.
 * SQLite is accessed in serialized mode of operation
 * Three tables: Ledger, Archive, Users
 
 **Server Daemon**
-* Two primary threads of execution: Ledger Worker and Connection Worker
+* Three primary threads: Init, Ledger Worker, and Connection Worker.
+* There is a fourth, minor thread listening for `SIGINT`
 * On first startup, will generate a key pair to verify requests and sign responses.
 * Listen on UNIX Domain Socket
-* Connection worker will spawn a new thread to handle each connection received.
+* Connection worker will spawn a new thread out of a pool of `num_cpu::get() * 4` to handle each connection received.
 * `std::thread` spawns and controls OS threads rather than something lightweight like the `M:N` threads in `Go`. I need to consider some designs using `async` and `await`. This would allow a bit more scalability without the impact on system resources that comes with OS threads (a minor one, but more than with `M:N` threads). The caveat being that `async` and `await` are not in stable Rust yet. See [areweasyncyet.rs](https://areweasyncyet.rs) for the development status of asynchronous Rust.
 * Each connection thread will communicate with the Ledger Worker via `mpsc` (channel).
 
 **Ledger Worker**
-* Should *never* panic
+* Should *never* panic.
 * Receives requests on an `mpsc`, no restriction on buffer.
 * As requests are handled `FIFO`, there will be no issues with multiple SQL transactions occuring at the same time. If a `SIGINT` is received, a disconnect signal will be sent to the transaction queue and executed in order, allowing pending transactions to complete before shutting down.
 * Requests will have been previously deserialized into a struct containing the following fields:
