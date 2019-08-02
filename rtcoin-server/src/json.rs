@@ -58,7 +58,8 @@ pub fn to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
 
 // Takes a string, outputs JSON.
 // If there's an error, sends an error down the socket.
-// TODO: This shouldn't do that last bit. Leave that up to the caller.
+// TODO: This is an unnecessary function. I need to get rid of it
+//       and just call serde_json::from_str() directly
 pub fn from_str(json_in: &str, conn: Option<&mut UnixStream>) -> Option<serde_json::Value> {
     return match serde_json::from_str(&json_in) {
         Ok(val) => Some(val),

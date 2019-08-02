@@ -13,8 +13,8 @@ pub const FILE: &str = "/tmp/rtcoinserver.log";
 
 pub fn init() {
     // If the log file exists on startup,
-    // timestamp it so we get a fresh log
-    // file.
+    // move and timestamp it so we get a 
+    // fresh log file.
     if fs::metadata(FILE).is_ok() {
         let mut newpath = FILE.to_string();
         let time = Utc::now().to_string();
@@ -37,8 +37,4 @@ pub fn init() {
             ),
         ]
     ).expect("Unable to initialize logging");
-}
-
-#[cfg(test)]
-mod test {
 }

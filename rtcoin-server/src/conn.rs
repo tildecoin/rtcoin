@@ -106,14 +106,13 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
     return match recv {
         Ok(val) => Some(val),
         Err(err) => {
-            let err = format!("{}", err);
-            
+            let err = format!("{}", err);            
             let out = err::Resp::new(01, "Worker Error", &err);
-
             let out = out.to_bytes();
-            conn.write_all(&out).unwrap();
 
+            conn.write_all(&out).unwrap();
             error!("Error in Ledger Worker Response: {}", err);
+            
             None
         }
     }
@@ -121,9 +120,7 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
 
 // Response when the connection worker receives an
 // external request specifying the "Disconnect" or
-// "Query" actions. Disconnect shuts down the
-// ledger worker and Query performs arbitrary
-// queries against the ledger database.
+// "Query" actions.
 fn invalid_request(conn: &mut UnixStream, kind: &str) {
     let details = format!("\"{}\" is not an allowed request type", kind);
     let msg = err::Resp::new(03, "Invalid Request", &details);

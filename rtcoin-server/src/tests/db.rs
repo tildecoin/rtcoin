@@ -11,8 +11,9 @@ use std::{
     thread,
 };
 
+// This test needs to be broken up
 #[test]
-fn worker_thread_spawn_send_recv_serialize_rows() {
+fn worker_thread_spawn_send_recv_query_rows() {
     let path = "/tmp/rtcoinserver-test.db";
     let (worker_tx, pipe) = mpsc::channel::<Comm>();
     let db = DB::connect(path, "test".into(), pipe);
@@ -27,8 +28,8 @@ fn worker_thread_spawn_send_recv_serialize_rows() {
     let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
     let stmt = db.conn.prepare(stmt).unwrap();
 
-    if let Err(_) = deserialize_rows(stmt) {
-        panic!("failure in serialize_rows()");
+    if let Err(_) = query_to_ledger_rows(stmt) {
+        panic!("failure in query_to_ledger_rows()");
     }
         
     // Above, comm takes ownership of the previous

@@ -261,9 +261,9 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
         .expect("Could not create users table");
 }
 
-// Deserializes the rows returned from a query into
+// Takes the rows returned from a query and packs them into
 // a Vec of the LedgerEntry struct.
-pub fn deserialize_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
+pub fn query_to_ledger_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
     let mut stmt = stmt;
     let rows = stmt.query_map(NO_PARAMS, |row| {
         Ok(LedgerEntry {

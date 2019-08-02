@@ -37,7 +37,11 @@ pub fn whoami(comm: db::Comm, conn: &rusqlite::Connection) {
     let query_for_logs = format!("{}, {}", query, user);
     info!("New query: {}", query_for_logs);
     let mut rowstmt = conn.prepare(&query).unwrap();
-
+    
+    // If the query fails, we can return an err::Resp
+    // as long as it's been serialized into a string.
+    // Lets us continue on without adding complex 
+    // execution branches for handling errors.
     let row = rowstmt.query_row_named(
         &[(":name", &user)], 
         |row| {
