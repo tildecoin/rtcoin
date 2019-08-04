@@ -16,3 +16,16 @@ fn msg_resp() {
     assert_eq!(kind, "Test Error");
     assert_eq!(details, "Some stuff went wrong");
 }
+
+#[test]
+#[should_panic]
+fn log_then_panic() {
+    let error = err::Resp::new(14, "Test Error", "Some stuff");
+    let code = error.code();
+    assert_eq!(14, code);
+
+    err::log_then_panic(
+        "Test Panic",
+        error,    
+    );
+}
