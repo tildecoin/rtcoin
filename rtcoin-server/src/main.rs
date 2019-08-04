@@ -112,12 +112,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn spawn_ledger_worker_with_receiver(db_key: String, rx: mpsc::Receiver<db::Comm>) {
+fn spawn_ledger_worker_with_receiver(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
     // This next call opens the actual database connection.
     // It also creates the tables if they don't yet exist.
     info!("Connecting to database: {}", db::PATH);
     let ledger = DB::connect(db::PATH, db_key.clone(), rx);
-    let mut db_key = db_key;
     db_key.zeroize();
 
     // Naming the thread helps with debugging. It will

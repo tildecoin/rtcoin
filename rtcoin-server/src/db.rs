@@ -1,10 +1,9 @@
-//
+////
 // rtcoin - Copyright (c) 2019 Ben Morrison (gbmor)
 // See LICENSE file for detailed license information.
 //
 
 use std::{
-    error::Error,
     path::Path, 
     sync::mpsc,
 };
@@ -146,7 +145,7 @@ impl Comm {
 impl DB {
     // Connect to the ledger database, creating it
     // if necessary.
-    pub fn connect(path: &str, db_key: String, pipe: mpsc::Receiver<Comm>) -> DB {
+    pub fn connect(path: &str, mut db_key: String, pipe: mpsc::Receiver<Comm>) -> DB {
         let mut db_flags = OpenFlags::empty();
         db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true);        // Create DB if it doesn't exist.
         db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true);    // RW mode.
@@ -165,7 +164,6 @@ impl DB {
         // encryption on a new database or allows 
         // the decryption of an existing database.
         let mut pragma = format!("PRAGMA key = '{}'", db_key);
-        let mut db_key = db_key;
         db_key.zeroize();
 
         conn.execute(&pragma, NO_PARAMS)
@@ -263,8 +261,7 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
 
 // Takes the rows returned from a query and packs them into
 // a Vec of the LedgerEntry struct.
-pub fn query_to_ledger_rows(stmt: rusqlite::Statement) -> Result<Vec<LedgerEntry>, Box<dyn Error>> {
-    let mut stmt = stmt;
+pub fn query_to_ledger_rows(mut stmt: rusqlite::Statement) -> rusqlite::Result<Vec<LedgerEntry>> {
     let rows = stmt.query_map(NO_PARAMS, |row| {
         Ok(LedgerEntry {
             id: row.get(0)?,

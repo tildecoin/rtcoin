@@ -36,12 +36,11 @@ use crate::json;
 pub const SOCK: &str = "/tmp/rtcoinserver.sock";
 
 // First handler for each new connection.
-pub fn init(conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
+pub fn init(mut conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     // Have to make the connection mutable for route().
     // Also, clone it to create a BufReader while still
     // retaining access to the stream (BufReader::new()
     // consumes the stream it's passed)
-    let mut conn = conn;
     let incoming = conn.try_clone().unwrap_or_else(|err| {
         error!("Client connection error: {}", err);
         debug!("Failed to clone UnixStream: conn.rs::init()");
