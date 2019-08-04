@@ -4,6 +4,7 @@
 //
 
 use crate::db::*;
+use crate::query;
 
 use std::{
     fs,
@@ -28,7 +29,7 @@ fn worker_thread_spawn_send_recv_query_rows() {
     let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
     let stmt = db.conn.prepare(stmt).unwrap();
 
-    if let Err(_) = query_to_ledger_rows(stmt) {
+    if let Err(_) = query::to_ledger_entry(stmt) {
         panic!("failure in query_to_ledger_rows()");
     }
         

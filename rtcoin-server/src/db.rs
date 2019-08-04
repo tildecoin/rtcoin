@@ -258,28 +258,3 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
         )
         .expect("Could not create users table");
 }
-
-// Takes the rows returned from a query and packs them into
-// a Vec of the LedgerEntry struct.
-pub fn query_to_ledger_rows(mut stmt: rusqlite::Statement) -> rusqlite::Result<Vec<LedgerEntry>> {
-    let rows = stmt.query_map(NO_PARAMS, |row| {
-        Ok(LedgerEntry {
-            id: row.get(0)?,
-            transaction_type: row.get(1)?,
-            timestamp: row.get(2)?,
-            source: row.get(3)?,
-            destination: row.get(4)?,
-            amount: row.get(5)?,
-            ledger_hash: row.get(6)?,
-            receipt_id: row.get(7)?,
-            receipt_hash: row.get(8)?,
-        })
-    })?;
-
-    Ok(
-        rows.map(|row| {
-            row.unwrap()
-        })
-        .collect::<Vec<LedgerEntry>>()
-    )
-}

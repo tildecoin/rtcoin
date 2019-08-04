@@ -8,6 +8,7 @@ use log::{
     info,
 };
 use rusqlite;
+use rusqlite::NO_PARAMS;
 
 use crate::db;
 use crate::err;
@@ -61,4 +62,29 @@ pub fn whoami(comm: db::Comm, conn: &rusqlite::Connection) {
     if let Err(err) = origin_channel_clone.send(reply) {
         error!("Failed to send reply: {}", err);
     }
+}
+
+// Takes the rows returned from a query and packs them into
+// a Vec of the db::LedgerEntry struct.
+pub fn to_ledger_entry(mut stmt: rusqlite::Statement) -> rusqlite::Result<Vec<db::LedgerEntry>> {
+    let rows = stmt.query_map(NO_PARAMS, |row| {
+        Ok(db::LedgerEntry {
+            id: row.get(0)?,
+            transaction_type: row.get(1)?,
+            timestamp: row.get(2)?,
+            source: row.get(3)?,
+            destination: row.get(4)?,
+            amount: row.get(5)?,
+            ledger_hash: row.get(6)?,
+            receipt_id: row.get(7)?,
+            receipt_hash: row.get(8)?,
+        })
+    })?;
+
+    Ok(
+        rows.map(|row| {
+            row.unwrap()
+        })
+        .collect::<Vec<db::LedgerEntry>>()
+    )
 }
