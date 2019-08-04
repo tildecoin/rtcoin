@@ -47,8 +47,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     eprintln!("\nPlease enter the ledger password:");
     let mut db_key_in = rpassword::prompt_password_stderr("> ")
         .unwrap_or_else(|err| {
-            error!("Failed to read ledger password: {}", err);
-            panic!("{}", err);
+            err::log_then_panic("Failed to read database password", err);
+            panic!();
         });
     eprintln!();
     let db_key = db_key_in.trim().to_string();
@@ -100,7 +100,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         info!("¡Hasta luego!");
         process::exit(0);
     })
-    .expect("SIGINT handler setup failure");
+    .unwrap_or_else(|error| {
+        err::log_then_panic("SIGINT Handler Initialization", error);
+        panic!();
+    });
 
     // Bind to the socket. Spawn a new connection
     // worker thread for each client connection.
@@ -132,20 +135,25 @@ fn spawn_ledger_worker_with_receiver(mut db_key: String, rx: mpsc::Receiver<db::
             Ok(_) => info!("Database connection successfully closed"),
         }
     })
-    .expect("Ledger worker failed to spawn");
+    .unwrap_or_else(|error| {
+        err::log_then_panic("Ledger worker failed to spawn", error);
+        panic!(); // otherwise rustc complains about return type
+    });
 
     // Block execution until the thread we just
     // spawned returns.
     info!("Startup finished!");
-    worker_thread.join().unwrap_or_else(|_| ());
+    worker_thread.join().unwrap_or_else(|error| {
+        err::log_then_panic("Ledger Worker", error);
+        panic!() // otherwise rustc complains about return type
+    });
 }
 
 fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
     let lstnr = UnixListener::bind(sock)
-        .unwrap_or_else(|err|{
-            let msg = format!("Could not bind to socket {} :: {}", conn::SOCK, err);
-            error!("{}", msg);
-            panic!("{}", msg);
+        .unwrap_or_else(|error|{
+            err::log_then_panic("Could not bind to socket", error);
+            panic!();
         });
 
     // The thread pool will always allow at least

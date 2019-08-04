@@ -7,6 +7,10 @@ use std::{
     fmt,
 };
 
+use log::{
+    error,
+};
+
 // Used for quickly serializing an error into bytes
 // (or string) so that it may be sent across the socket. 
 // Current error codes:
@@ -61,3 +65,13 @@ impl Resp {
         self.details.clone()
     }
 }
+
+// I found myself writing this same construction
+// a few times repeatedly.
+pub fn log_then_panic<T>(context: &str, err: T)
+    where T: fmt::Debug
+    {
+        let msg = format!("{}: {:?}", context, err);
+        error!("{}", msg);
+        panic!("{}", msg);
+    }

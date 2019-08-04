@@ -9,7 +9,6 @@ use std::{
 };
 
 use log::{
-    error,
     info,
 };
 
@@ -22,6 +21,7 @@ use rusqlite::{
 use zeroize::Zeroize;
 
 use crate::{
+    err,
     user,
     query,
 };
@@ -155,9 +155,9 @@ impl DB {
         let path = Path::new(path);
         let conn =
             Connection::open_with_flags(path, db_flags)
-                .unwrap_or_else(|err| {
-                    error!("Could not open ledger connection: {}", err);
-                    panic!("{}", err);
+                .unwrap_or_else(|error| {
+                    err::log_then_panic("Could not open database connection", error);
+                    panic!();
                 });
 
         // This PRAGMA is what either enables
@@ -167,9 +167,9 @@ impl DB {
         db_key.zeroize();
 
         conn.execute(&pragma, NO_PARAMS)
-            .unwrap_or_else(|err| {
-                error!("When authenticating with database: {}", err);
-                panic!("{}", err);
+            .unwrap_or_else(|error| {
+                err::log_then_panic("Database authentication failure", error);
+                panic!();
             });
 
         pragma.zeroize();
