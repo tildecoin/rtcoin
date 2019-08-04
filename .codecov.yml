@@ -2,3 +2,8 @@ coverage:
   range: 50..80
   round: nearest
   precision: 1
+
+ignore:
+  - "rtcoin-server/src/tests"
+  - "rtcoin-client/src/tests"
+  - "tests"
