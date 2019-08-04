@@ -9,6 +9,7 @@ use std::fs;
 
 #[test]
 fn check_init() {
+    fs::write(FILE, b"Testing Rename of Old Log Files").unwrap();
     init();
     assert!(fs::metadata(FILE).is_ok());
         
