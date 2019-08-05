@@ -26,7 +26,7 @@ use crate::{
     query,
 };
 
-pub const PATH: &str = "/tmp/rtcoinledger.db";
+pub const PATH: &str = "/tmp/rtcoinserver.db";
 
 // Wrapper for the database connection and the
 // communication channel.
@@ -188,7 +188,7 @@ impl DB {
 
     // Continually read from the channel to
     // process the incoming Comms.
-    pub fn worker_thread(&self) {
+    pub fn worker_thread(&self) -> Comm {
         while let Ok(comm) = self.pipe.recv() {
             info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
@@ -204,10 +204,11 @@ impl DB {
                 Some(Kind::Resolve) => { },
                 Some(Kind::Second) => { },
                 Some(Kind::Query) => { },
-                Some(Kind::Disconnect) => return,
+                Some(Kind::Disconnect) => return comm.clone(),
                 _ => continue,
             };
         }
+        Comm { kind: None, args: None, origin: None }
     }
 }
 

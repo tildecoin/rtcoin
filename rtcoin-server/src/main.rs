@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // spawn the ledger worker to listen for query requests.
     info!("Starting ledger worker...");
     let (tx, rx) = mpsc::channel::<db::Comm>();
-    thread::spawn(move || spawn_ledger_worker_with_receiver(db_key, rx));
+    thread::spawn(move || spawn_ledger_worker(db_key, rx));
 
     // If the socket exists already, remove it.
     let sock = Path::new(conn::SOCK);
@@ -92,10 +92,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         
         // Block to allow database to close
-        match sigint_rx.recv() {
-            Ok(_) => { },
-            Err(_) => { },
-        }
+        sigint_rx.recv().unwrap_or_else(|error| {
+                warn!("{:?}", error);
+                process::exit(1);
+            });
         
         info!("¡Hasta luego!");
         process::exit(0);
@@ -115,7 +115,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn spawn_ledger_worker_with_receiver(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
+fn spawn_ledger_worker(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
     // This next call opens the actual database connection.
     // It also creates the tables if they don't yet exist.
     info!("Connecting to database: {}", db::PATH);
@@ -129,11 +129,24 @@ fn spawn_ledger_worker_with_receiver(mut db_key: String, rx: mpsc::Receiver<db::
 
     info!("Starting ledger worker process...");
     let worker_thread = ledger_worker.spawn(move || {
-        ledger.worker_thread();
+        // once the worker_thread() method returns,
+        // begin cleanup. so the whole process can exit.
+        let disconnect_comm = ledger.worker_thread();
         match ledger.conn.close() {
             Err(err) => error!("Error closing database connection: {:?}", err),
             Ok(_) => info!("Database connection successfully closed"),
         }
+
+        // Once we've closed the DB connection, let the
+        // SIGINT thread know so it can kill the whole
+        // process.
+        if let Some(tx) = disconnect_comm.origin {
+            tx.send(db::Reply::Data(String::new()))
+                .expect(
+                    "When notifying SIGINT handler of DB connection close, something went wrong."
+                );
+        }
+
     })
     .unwrap_or_else(|error| {
         err::log_then_panic("Ledger worker failed to spawn", error);
