@@ -14,6 +14,7 @@ for `rtcoin` as of `02 August 2019`
 * Will prompt for a database password on startup. This will present additional complexity when attempting to control `rtcoin-server` from a traditional init system. However, this is a trade-off to make for additional security when compared to a stored password.
 * SQLite is accessed in serialized mode of operation
 * Three tables: Ledger, Archive, Users
+* Refactor to use `diesel` as an `ORM` soon rather than issue `SQL` by hand
 
 **Server Daemon**
 * Three primary threads: Init, Ledger Worker, and Connection Worker.
