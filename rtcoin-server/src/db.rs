@@ -3,7 +3,7 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{path::Path, sync::mpsc};
+use std::{path::Path, sync::mpsc, thread};
 
 use log::info;
 
@@ -174,7 +174,7 @@ impl DB {
         while let Ok(comm) = self.pipe.recv() {
             info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
-                Some(Kind::Register) => user::register(&comm, &self.conn),
+                Some(Kind::Register) => user::register(comm.clone(), &self.conn),
                 Some(Kind::Whoami) => query::whoami(comm, &self.conn),
                 Some(Kind::Rename) => {}
                 Some(Kind::Send) => {}
@@ -188,7 +188,7 @@ impl DB {
                 Some(Kind::Query) => {}
                 Some(Kind::Disconnect) => return comm.clone(),
                 _ => continue,
-            };
+            }
         }
         Comm {
             kind: None,

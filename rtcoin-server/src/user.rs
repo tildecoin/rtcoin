@@ -81,7 +81,7 @@ impl User {
     }
 }
 
-pub fn register(comm: &db::Comm, db: &rusqlite::Connection) {
+pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
     let thetime = chrono::Utc::now().to_rfc2822();
     let tx = match &comm.origin {
         Some(t) => t,
@@ -97,7 +97,10 @@ pub fn register(comm: &db::Comm, db: &rusqlite::Connection) {
     let pubkey = args[2].clone();
 
     match check_pass(&pass) {
-        Err(err) => tx.send(db::Reply::Error(err)).unwrap(),
+        Err(err) => match tx.send(db::Reply::Error(err)) {
+            Ok(_) => {}
+            Err(err) => log::warn!("{:?}", err),
+        },
         Ok(_) => {}
     }
 
@@ -105,7 +108,10 @@ pub fn register(comm: &db::Comm, db: &rusqlite::Connection) {
         Ok(st) => st,
         Err(err) => {
             let err = format!("Internal Error: {:?}", err);
-            tx.send(db::Reply::Error(err)).unwrap();
+            match tx.send(db::Reply::Error(err)) {
+                Ok(_) => {}
+                Err(err) => log::warn!("{:?}", err),
+            }
             return;
         }
     };
@@ -121,13 +127,18 @@ pub fn register(comm: &db::Comm, db: &rusqlite::Connection) {
         Ok(_) => {}
         Err(err) => {
             let err = format!("Internal Error: {:?}", err);
-            tx.send(db::Reply::Error(err)).unwrap();
+            match tx.send(db::Reply::Error(err)) {
+                Ok(_) => {}
+                Err(err) => log::warn!("{:?}", err),
+            }
         }
     }
 
     log::info!("Registration Successful: {}", user);
-    tx.send(db::Reply::Info("Registration Successful".into()))
-        .unwrap();
+    match tx.send(db::Reply::Info("Registration Successful".into())) {
+        Ok(_) => {}
+        Err(err) => log::warn!("{:?}", err),
+    }
 
     pass.zeroize();
 }
