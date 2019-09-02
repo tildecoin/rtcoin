@@ -10,7 +10,7 @@ use std::{
     sync::mpsc,
 };
 
-use log::{debug, error, info};
+use log;
 
 use serde_json::Value;
 
@@ -28,27 +28,35 @@ pub fn init(mut conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
     // retaining access to the stream (BufReader::new()
     // consumes the stream it's passed)
     let incoming = conn.try_clone().unwrap_or_else(|err| {
-        error!("Client connection error: {}", err);
-        debug!("Failed to clone UnixStream: conn.rs::init()");
+        log::error!("Client connection error: {}", err);
+        log::debug!("Failed to clone UnixStream: conn.rs::init()");
         panic!("{}", err);
     });
     let mut incoming = BufReader::new(incoming);
 
-    // deserialize the request
-    let mut json_in = String::new();
-    incoming.read_line(&mut json_in).unwrap_or_else(|err| {
-        error!("Error reading client request: {}", err);
-        debug!("conn.rs::init(), incoming.read_line(..), error: {}", err);
-        panic!("{}", err);
-    });
-    let json_in: Value = json::from_str(&json_in, Some(&mut conn)).unwrap();
+    loop {
+        // deserialize the request
+        let mut json_in = String::new();
+        incoming.read_line(&mut json_in).unwrap_or_else(|err| {
+            log::error!("Error reading client request: {}", err);
+            log::debug!("conn.rs::init(), incoming.read_line(..), error: {}", err);
+            panic!("{}", err);
+        });
+        let json_in: Value = json::from_str(&json_in, Some(&mut conn)).unwrap();
 
-    route(&mut conn, &json_in, &pipe);
+        match json_in["kind"]
+            .to_string()
+            .chars()
+            .map(|c| c.to_lowercase().to_string())
+            .collect::<String>()
+            .as_ref()
+        {
+            "quit" => return,
+            _ => {}
+        }
 
-    let mut buf = String::new();
-    incoming
-        .read_line(&mut buf)
-        .expect("conn.rs::L85::init() - failed to read line for debug hold");
+        route(&mut conn, &json_in, &pipe);
+    }
 }
 
 // This handles the routing of requests from *clients*
@@ -76,7 +84,7 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
     let resp: Option<db::Reply> = recv(rx.recv(), conn);
 
     if resp.is_none() {
-        info!("Closing client connection");
+        log::info!("Closing client connection");
         let out = err::Resp::new(
             01,
             "Worker Error",
@@ -100,7 +108,7 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
             let out = out.to_bytes();
 
             conn.write_all(&out).unwrap();
-            error!("Error in Ledger Worker Response: {}", err);
+            log::error!("Error in Ledger Worker Response: {}", err);
             None
         }
     };
@@ -114,7 +122,7 @@ fn invalid_request(conn: &mut UnixStream, kind: &str) {
     let msg = err::Resp::new(03, "Invalid Request", &details);
     let msg = msg.to_bytes();
 
-    error!("Received invalid request from client: {}", details);
+    log::error!("Received invalid request from client: {}", details);
 
     conn.write_all(&msg).unwrap();
     conn.shutdown(Shutdown::Both).unwrap();
