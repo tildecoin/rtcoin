@@ -3,28 +3,15 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{
-    path::Path, 
-    sync::mpsc,
-};
+use std::{path::Path, sync::mpsc};
 
-use log::{
-    info,
-};
+use log::info;
 
-use rusqlite::{
-    Connection, 
-    OpenFlags, 
-    NO_PARAMS,
-};
+use rusqlite::{Connection, OpenFlags, NO_PARAMS};
 
 use zeroize::Zeroize;
 
-use crate::{
-    err,
-    user,
-    query,
-};
+use crate::{err, query, user};
 
 pub const PATH: &str = "/tmp/rtcoinserver.db";
 
@@ -75,6 +62,7 @@ pub enum Kind {
 pub enum Reply {
     Data(String),
     Error(String),
+    Info(String),
     Rows(Vec<String>),
 }
 
@@ -120,12 +108,12 @@ pub struct UserEntry {
 impl Comm {
     // Cleanly package up a new request for
     // the ledger database worker thread.
-    pub fn new(kind: Option<Kind>, args: Option<Vec<String>>, origin: Option<mpsc::Sender<Reply>>) -> Comm {
-        Comm {
-            kind,
-            args,
-            origin,
-        }
+    pub fn new(
+        kind: Option<Kind>,
+        args: Option<Vec<String>>,
+        origin: Option<mpsc::Sender<Reply>>,
+    ) -> Comm {
+        Comm { kind, args, origin }
     }
 
     pub fn kind(&self) -> &Kind {
@@ -147,30 +135,27 @@ impl DB {
     // if necessary.
     pub fn connect(path: &str, mut db_key: String, pipe: mpsc::Receiver<Comm>) -> DB {
         let mut db_flags = OpenFlags::empty();
-        db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true);        // Create DB if it doesn't exist.
-        db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true);    // RW mode.
-        db_flags.set(OpenFlags::SQLITE_OPEN_FULL_MUTEX, true);    // Flag to open the database in Serialized mode.
+        db_flags.set(OpenFlags::SQLITE_OPEN_CREATE, true); // Create DB if it doesn't exist.
+        db_flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, true); // RW mode.
+        db_flags.set(OpenFlags::SQLITE_OPEN_FULL_MUTEX, true); // Flag to open the database in Serialized mode.
         db_flags.set(OpenFlags::SQLITE_OPEN_PRIVATE_CACHE, true); // Use private cache even if shared is enabled.
                                                                   // See: https://www.sqlite.org/c3ref/open.html
         let path = Path::new(path);
-        let conn =
-            Connection::open_with_flags(path, db_flags)
-                .unwrap_or_else(|error| {
-                    err::log_then_panic("Could not open database connection", error);
-                    panic!();
-                });
+        let conn = Connection::open_with_flags(path, db_flags).unwrap_or_else(|error| {
+            err::log_then_panic("Could not open database connection", error);
+            panic!();
+        });
 
         // This PRAGMA is what either enables
-        // encryption on a new database or allows 
+        // encryption on a new database or allows
         // the decryption of an existing database.
         let mut pragma = format!("PRAGMA key = '{}'", db_key);
         db_key.zeroize();
 
-        conn.execute(&pragma, NO_PARAMS)
-            .unwrap_or_else(|error| {
-                err::log_then_panic("Database authentication failure", error);
-                panic!();
-            });
+        conn.execute(&pragma, NO_PARAMS).unwrap_or_else(|error| {
+            err::log_then_panic("Database authentication failure", error);
+            panic!();
+        });
 
         pragma.zeroize();
 
@@ -180,10 +165,7 @@ impl DB {
         // incorrect.
         startup_check_tables(&conn);
 
-        DB { 
-            conn, 
-            pipe, 
-        }
+        DB { conn, pipe }
     }
 
     // Continually read from the channel to
@@ -192,30 +174,34 @@ impl DB {
         while let Ok(comm) = self.pipe.recv() {
             info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
-                Some(Kind::Register) => user::register(&comm),
+                Some(Kind::Register) => user::register(&comm, &self.conn),
                 Some(Kind::Whoami) => query::whoami(comm, &self.conn),
-                Some(Kind::Rename) => { },
-                Some(Kind::Send) => { },
-                Some(Kind::Sign) => { },
-                Some(Kind::Balance) => { },
-                Some(Kind::Verify) => { },
-                Some(Kind::Contest) => { },
-                Some(Kind::Audit) => { },
-                Some(Kind::Resolve) => { },
-                Some(Kind::Second) => { },
-                Some(Kind::Query) => { },
+                Some(Kind::Rename) => {}
+                Some(Kind::Send) => {}
+                Some(Kind::Sign) => {}
+                Some(Kind::Balance) => {}
+                Some(Kind::Verify) => {}
+                Some(Kind::Contest) => {}
+                Some(Kind::Audit) => {}
+                Some(Kind::Resolve) => {}
+                Some(Kind::Second) => {}
+                Some(Kind::Query) => {}
                 Some(Kind::Disconnect) => return comm.clone(),
                 _ => continue,
             };
         }
-        Comm { kind: None, args: None, origin: None }
+        Comm {
+            kind: None,
+            args: None,
+            origin: None,
+        }
     }
 }
 
 // Just pulled out these statements to clean up DB::connect()
 fn startup_check_tables(conn: &rusqlite::Connection) {
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS ledger (
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS ledger (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
                 type            TEXT NOT NULL, 
                 timestamp       TEXT NOT NULL, 
@@ -226,12 +212,12 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
                 receipt_id      INTEGER NOT NULL, 
                 receipt_hash    TEXT NOT NULL
             )",
-            NO_PARAMS,
-        )
-        .expect("Could not create ledger table");
+        NO_PARAMS,
+    )
+    .expect("Could not create ledger table");
 
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS archive (
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS archive (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 type            TEXT NOT NULL,
                 timestamp       TEXT NOT NULL,
@@ -240,12 +226,12 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
                 hash            TEXT NOT NULL,
                 filename        TEXT NOT NULL
             )",
-            NO_PARAMS,
-        )
-        .expect("Could not create archive table");
+        NO_PARAMS,
+    )
+    .expect("Could not create archive table");
 
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS users (
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS users (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 name        TEXT NOT NULL,
                 pass        TEXT NOT NULL,
@@ -255,7 +241,7 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
                 created     TEXT NOT NULL,
                 last_login  TEXT NOT NULL
             )",
-            NO_PARAMS,
-        )
-        .expect("Could not create users table");
+        NO_PARAMS,
+    )
+    .expect("Could not create users table");
 }

@@ -4,32 +4,18 @@
 //
 
 use std::{
-    io::{
-        BufReader,
-        BufRead,
-        Write,
-    },
+    io::{BufRead, BufReader, Write},
     net::Shutdown,
-    os::unix::net::{
-        UnixStream,
-    },
+    os::unix::net::UnixStream,
     sync::mpsc,
 };
 
-use log::{
-    info,
-    error,
-    debug,
-};
+use log::{debug, error, info};
 
-use serde_json::{
-    Value,
-};
+use serde_json::Value;
 
 use crate::db;
-use crate::db::{
-    Kind,
-};
+use crate::db::Kind;
 use crate::err;
 use crate::json;
 
@@ -50,18 +36,18 @@ pub fn init(mut conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
 
     // deserialize the request
     let mut json_in = String::new();
-    incoming.read_line(&mut json_in)
-        .unwrap_or_else(|err| {
-            error!("Error reading client request: {}", err);
-            debug!("conn.rs::init(), incoming.read_line(..), error: {}", err);
-            panic!("{}", err);
-        });   
+    incoming.read_line(&mut json_in).unwrap_or_else(|err| {
+        error!("Error reading client request: {}", err);
+        debug!("conn.rs::init(), incoming.read_line(..), error: {}", err);
+        panic!("{}", err);
+    });
     let json_in: Value = json::from_str(&json_in, Some(&mut conn)).unwrap();
 
     route(&mut conn, &json_in, &pipe);
 
     let mut buf = String::new();
-    incoming.read_line(&mut buf)
+    incoming
+        .read_line(&mut buf)
         .expect("conn.rs::L85::init() - failed to read line for debug hold");
 }
 
@@ -77,13 +63,13 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
     match comm.kind() {
         Kind::Disconnect => {
             invalid_request(conn, "Disconnect");
-            return
+            return;
         }
         Kind::Query => {
             invalid_request(conn, "Query");
-            return
-         }
-         _ => { }
+            return;
+        }
+        _ => {}
     }
 
     pipe.send(comm).unwrap();
@@ -91,10 +77,14 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
 
     if resp.is_none() {
         info!("Closing client connection");
-        let out = err::Resp::new(01, "Worker Error", "No response from worker. Closing connection.").to_bytes();
+        let out = err::Resp::new(
+            01,
+            "Worker Error",
+            "No response from worker. Closing connection.",
+        )
+        .to_bytes();
         conn.write_all(&out).unwrap();
         conn.shutdown(Shutdown::Both).unwrap();
-    
     } else if let Some(val) = resp {
         let reply = format!("{:#?}", val);
         conn.write_all(reply.as_bytes()).unwrap();
@@ -105,16 +95,15 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
     return match recv {
         Ok(val) => Some(val),
         Err(err) => {
-            let err = format!("{}", err);            
+            let err = format!("{}", err);
             let out = err::Resp::new(01, "Worker Error", &err);
             let out = out.to_bytes();
 
             conn.write_all(&out).unwrap();
             error!("Error in Ledger Worker Response: {}", err);
-            
             None
         }
-    }
+    };
 }
 
 // Response when the connection worker receives an

@@ -3,19 +3,13 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{
-    fmt,
-};
+use std::fmt;
 
 use chrono::prelude::*;
-use log::{
-    error,
-    info,
-};
+use log;
+use zeroize::Zeroize;
 
-use crate::{
-    db,
-};
+use crate::db;
 
 #[derive(Debug)]
 pub struct User {
@@ -27,11 +21,7 @@ pub struct User {
     last_login: String,
 }
 
-#[derive(Debug)]
-pub enum InitCode {
-    Success,
-    Fail(String),
-}
+type AuthResult<T> = std::result::Result<T, String>;
 
 // The std::fmt::Display trait, so a User
 // can be passed to a print!() macro. Will
@@ -45,11 +35,11 @@ impl fmt::Display for User {
         let created = DateTime::parse_from_rfc2822(&self.created).unwrap();
         let since = Utc::now().signed_duration_since(created);
         let acct_age = format!(
-                "{} weeks, {} days, {} hours", 
-                since.num_weeks(),
-                since.num_days(),
-                since.num_hours()
-            );
+            "{} weeks, {} days, {} hours",
+            since.num_weeks(),
+            since.num_days(),
+            since.num_hours()
+        );
 
         write!(
             f,
@@ -89,11 +79,66 @@ impl User {
     pub fn balance_as_string(&self) -> String {
         format!("{}", self.balance)
     }
-
 }
 
-pub fn register(_comm: &db::Comm) {
-    // placeholder
-    error!("{:#?}", InitCode::Fail(String::from("Unspecified Error")));
-    info!("{:#?}", InitCode::Success);
+pub fn register(comm: &db::Comm, db: &rusqlite::Connection) {
+    let thetime = chrono::Utc::now().to_rfc2822();
+    let tx = match &comm.origin {
+        Some(t) => t,
+        None => return,
+    };
+    let query = format!("INSERT INTO users (name, pass, pubkey, balance, created, last_login) VALUES (:name, :pass, :pubkey, :balance, :created, :last_login)");
+    let args = match &comm.args {
+        Some(val) => val,
+        None => return,
+    };
+    let user = args[0].clone();
+    let mut pass = args[1].clone();
+    let pubkey = args[2].clone();
+
+    match check_pass(&pass) {
+        Err(err) => tx.send(db::Reply::Error(err)).unwrap(),
+        Ok(_) => {}
+    }
+
+    let mut stmt = match db.prepare(&query) {
+        Ok(st) => st,
+        Err(err) => {
+            let err = format!("Internal Error: {:?}", err);
+            tx.send(db::Reply::Error(err)).unwrap();
+            return;
+        }
+    };
+
+    match stmt.execute_named(&[
+        (":name", &user),
+        (":pass", &pass),
+        (":pubkey", &pubkey),
+        (":balance", &1000.0),
+        (":created", &thetime),
+        (":last_login", &thetime),
+    ]) {
+        Ok(_) => {}
+        Err(err) => {
+            let err = format!("Internal Error: {:?}", err);
+            tx.send(db::Reply::Error(err)).unwrap();
+        }
+    }
+
+    log::info!("Registration Successful: {}", user);
+    tx.send(db::Reply::Info("Registration Successful".into()))
+        .unwrap();
+
+    pass.zeroize();
+}
+
+fn check_pass(pass: &str) -> AuthResult<()> {
+    let mut pass = pass.to_string();
+
+    if pass.len() < 12 {
+        return Err("Password too short".into());
+    }
+
+    pass.zeroize();
+    Ok(())
 }
