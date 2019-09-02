@@ -3,27 +3,15 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{
-    error::Error, 
-    fs,
-    os::unix::net::UnixListener, 
-    path::Path, 
-    process, 
-    sync::mpsc, 
-    thread,
-};
+use std::{error::Error, fs, os::unix::net::UnixListener, path::Path, process, sync::mpsc, thread};
 
 use ctrlc;
 
-use log::{
-    error,
-    info,
-    warn,
-};
+use log::{error, info, warn};
 
+use num_cpus;
 use rpassword;
 use threadpool::ThreadPool;
-use num_cpus;
 use zeroize::Zeroize;
 
 mod conn;
@@ -45,11 +33,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     eprintln!("\nrtcoin-server 0.1-dev");
     eprintln!("\nPlease enter the ledger password:");
-    let mut db_key_in = rpassword::prompt_password_stderr("> ")
-        .unwrap_or_else(|err| {
-            err::log_then_panic("Failed to read database password", err);
-            panic!();
-        });
+    let mut db_key_in = rpassword::prompt_password_stderr("> ").unwrap_or_else(|err| {
+        err::log_then_panic("Failed to read database password", err);
+        panic!();
+    });
     eprintln!();
     let db_key = db_key_in.trim().to_string();
     db_key_in.zeroize();
@@ -80,23 +67,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         info!("SIGINT: Sending disconnect signal to ledger worker queue");
         let (reply_tx, sigint_rx) = mpsc::channel::<db::Reply>();
-        let db_disconnect_signal = db::Comm::new(
-                Some(db::Kind::Disconnect),
-                None,
-                Some(reply_tx),
-            );
+        let db_disconnect_signal = db::Comm::new(Some(db::Kind::Disconnect), None, Some(reply_tx));
 
         match ctrlc_tx.send(db_disconnect_signal) {
-            Ok(_) => { },
-            Err(err) => error!("SIGINT: Failed to send disconnect signal to ledger worker: {}", err),
+            Ok(_) => {}
+            Err(err) => error!(
+                "SIGINT: Failed to send disconnect signal to ledger worker: {}",
+                err
+            ),
         }
-        
         // Block to allow database to close
         sigint_rx.recv().unwrap_or_else(|error| {
-                warn!("{:?}", error);
-                process::exit(1);
-            });
-        
+            warn!("{:?}", error);
+            process::exit(1);
+        });
         info!("¡Hasta luego!");
         process::exit(0);
     })
@@ -128,30 +112,29 @@ fn spawn_ledger_worker(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
 
     info!("Starting ledger worker process...");
-    let worker_thread = ledger_worker.spawn(move || {
-        // once the worker_thread() method returns,
-        // begin cleanup. so the whole process can exit.
-        let disconnect_comm = ledger.worker_thread();
-        match ledger.conn.close() {
-            Err(err) => error!("Error closing database connection: {:?}", err),
-            Ok(_) => info!("Database connection successfully closed"),
-        }
+    let worker_thread = ledger_worker
+        .spawn(move || {
+            // once the worker_thread() method returns,
+            // begin cleanup. so the whole process can exit.
+            let disconnect_comm = ledger.worker_thread();
+            match ledger.conn.close() {
+                Err(err) => error!("Error closing database connection: {:?}", err),
+                Ok(_) => info!("Database connection successfully closed"),
+            }
 
-        // Once we've closed the DB connection, let the
-        // SIGINT thread know so it can kill the whole
-        // process.
-        if let Some(tx) = disconnect_comm.origin {
-            tx.send(db::Reply::Data(String::new()))
-                .expect(
-                    "When notifying SIGINT handler of DB connection close, something went wrong."
+            // Once we've closed the DB connection, let the
+            // SIGINT thread know so it can kill the whole
+            // process.
+            if let Some(tx) = disconnect_comm.origin {
+                tx.send(db::Reply::Data(String::new())).expect(
+                    "When notifying SIGINT handler of DB connection close, something went wrong.",
                 );
-        }
-
-    })
-    .unwrap_or_else(|error| {
-        err::log_then_panic("Ledger worker failed to spawn", error);
-        panic!(); // otherwise rustc complains about return type
-    });
+            }
+        })
+        .unwrap_or_else(|error| {
+            err::log_then_panic("Ledger worker failed to spawn", error);
+            panic!(); // otherwise rustc complains about return type
+        });
 
     // Block execution until the thread we just
     // spawned returns.
@@ -163,14 +146,13 @@ fn spawn_ledger_worker(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
 }
 
 fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
-    let lstnr = UnixListener::bind(sock)
-        .unwrap_or_else(|error|{
-            err::log_then_panic("Could not bind to socket", error);
-            panic!();
-        });
+    let lstnr = UnixListener::bind(sock).unwrap_or_else(|error| {
+        err::log_then_panic("Could not bind to socket", error);
+        panic!();
+    });
 
     // The thread pool will always allow at least
-    // four simultaneous client connections. The 
+    // four simultaneous client connections. The
     // client connections will most likely not be
     // resource hogs.
     let thread_num = num_cpus::get() * 4;
@@ -183,9 +165,8 @@ fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
         // ledger worker process.
         let trx = tx.clone();
         info!("New client connection: {:?}", addr);
-       
         pool.execute(move || {
-                conn::init(conn, trx);
-            });
+            conn::init(conn, trx);
+        });
     }
 }
