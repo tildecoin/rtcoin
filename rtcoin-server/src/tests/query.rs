@@ -3,6 +3,8 @@
 // See LICENSE file for detailed license information.
 //
 
+extern crate test;
+
 use crate::db;
 use crate::query::*;
 use std::fs;
@@ -34,4 +36,17 @@ fn expect_no_rows() {
         .unwrap();
 
     fs::remove_file(path).unwrap();
+}
+
+#[bench]
+fn bench_whoami(b: &mut test::Bencher) {
+    let (_, rx) = mpsc::channel::<db::Comm>();
+    let db = db::DB::connect(db::PATH, "password".into(), rx);
+    let (otx, _) = mpsc::channel::<db::Reply>();
+    let comm = db::Comm {
+        kind: Some(db::Kind::Whoami),
+        args: Some(vec!["testuser".into()]),
+        origin: Some(otx),
+    };
+    b.iter(|| whoami(comm.clone(), &db.conn))
 }
