@@ -5,6 +5,9 @@
 
 extern crate test;
 
+use std::sync::mpsc;
+
+use crate::db;
 use crate::user::*;
 
 #[test]
@@ -39,4 +42,21 @@ fn test_check_pass_ok() {
 #[bench]
 fn bench_check_pass(b: &mut test::Bencher) {
     b.iter(|| check_pass("somepasswordhere"))
+}
+
+#[bench]
+fn bench_register(b: &mut test::Bencher) {
+    let (_, rx) = mpsc::channel::<db::Comm>();
+    let db = db::DB::connect(db::PATH, "password".into(), rx);
+    let (otx, _) = mpsc::channel::<db::Reply>();
+    let comm = db::Comm {
+        kind: Some(db::Kind::Register),
+        args: Some(vec![
+            "testuser".into(),
+            "testpassword".into(),
+            "pubkey".into(),
+        ]),
+        origin: Some(otx),
+    };
+    b.iter(|| register(comm.clone(), &db.conn))
 }
