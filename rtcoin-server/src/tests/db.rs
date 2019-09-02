@@ -3,14 +3,12 @@
 // See LICENSE file for detailed license information.
 //
 
+extern crate test;
+
 use crate::db::*;
 use crate::query;
 
-use std::{
-    fs,
-    sync::mpsc,
-    thread,
-};
+use std::{fs, sync::mpsc, thread};
 
 // This test needs to be broken up
 #[test]
@@ -32,7 +30,6 @@ fn worker_thread_spawn_send_recv_query_rows() {
     if let Err(_) = query::to_ledger_entry(stmt) {
         panic!("failure in query_to_ledger_rows()");
     }
-        
     // Above, comm takes ownership of the previous
     // instances of kind and trans. Need to duplicate
     // to test bulk_query(). Also, Clone isn't implemented
@@ -45,7 +42,6 @@ fn worker_thread_spawn_send_recv_query_rows() {
     thread::spawn(move || {
         db.worker_thread();
     });
-        
     worker_tx.send(comm).unwrap();
     worker_tx.send(comm2).unwrap();
 
@@ -55,8 +51,9 @@ fn worker_thread_spawn_send_recv_query_rows() {
     //rx_case1.recv().unwrap();
     //rx_case2.recv().unwrap();
 
-    worker_tx.send(Comm::new(Some(Kind::Disconnect), None, None)).unwrap();
-    
+    worker_tx
+        .send(Comm::new(Some(Kind::Disconnect), None, None))
+        .unwrap();
     if fs::metadata(path).is_ok() {
         fs::remove_file(path).unwrap();
     }
@@ -66,22 +63,27 @@ fn worker_thread_spawn_send_recv_query_rows() {
 fn comm_kind() {
     let (tx, _) = mpsc::channel::<Reply>();
     let kind = Kind::Query;
-    let args: Vec<String> = vec!["Source".into(),"Bob".into()];
+    let args: Vec<String> = vec!["Source".into(), "Bob".into()];
     let comm = Comm::new(Some(kind), Some(args), Some(tx));
 
     match comm.kind() {
-        Kind::Query => { },
+        Kind::Query => {}
         _ => panic!("Incorrect Kind"),
     }
 
     let arg1 = comm.args()[0].clone();
     let arg2 = comm.args()[1].clone();
     match &arg1[..] {
-        "Source" => { },
+        "Source" => {}
         _ => panic!("Incorrect arguments"),
     }
     match &arg2[..] {
-        "Bob" => { },
+        "Bob" => {}
         _ => panic!("Incorrect arguments"),
     }
+}
+
+#[bench]
+fn comm_kind_bench(bn: &mut test::Bencher) {
+    bn.iter(|| comm_kind())
 }

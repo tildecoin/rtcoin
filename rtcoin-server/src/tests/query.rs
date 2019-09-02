@@ -3,10 +3,10 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::sync::mpsc;
-use std::fs;
-use crate::query::*;
 use crate::db;
+use crate::query::*;
+use std::fs;
+use std::sync::mpsc;
 
 #[test]
 fn expect_no_rows() {
@@ -20,17 +20,18 @@ fn expect_no_rows() {
     let (commtx, commrx) = mpsc::channel::<db::Reply>();
 
     let comm = db::Comm::new(
-            Some(db::Kind::Whoami), 
-            Some(vec!["user".into(), "BobBobson".into()]), 
-            Some(commtx)
-        );
+        Some(db::Kind::Whoami),
+        Some(vec!["user".into(), "BobBobson".into()]),
+        Some(commtx),
+    );
 
     whoami(comm, &db.conn);
     let resp = commrx.recv().unwrap();
     let resp = format!("{:?}", resp);
 
     assert!(resp.contains("Query Error"));
-    dbtx.send(db::Comm::new(Some(db::Kind::Disconnect), None, None)).unwrap();
+    dbtx.send(db::Comm::new(Some(db::Kind::Disconnect), None, None))
+        .unwrap();
 
     fs::remove_file(path).unwrap();
 }

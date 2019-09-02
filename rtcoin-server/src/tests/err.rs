@@ -3,6 +3,8 @@
 // See LICENSE file for detailed license information.
 //
 
+extern crate test;
+
 use crate::err;
 
 #[test]
@@ -11,10 +13,14 @@ fn msg_resp() {
     let code = resp.code();
     let kind = resp.kind();
     let details = resp.details();
-        
     assert_eq!(code, 00);
     assert_eq!(kind, "Test Error");
     assert_eq!(details, "Some stuff went wrong");
+}
+
+#[bench]
+fn msg_resp_bench(b: &mut test::Bencher) {
+    b.iter(|| msg_resp())
 }
 
 #[test]
@@ -24,8 +30,5 @@ fn log_then_panic() {
     let code = error.code();
     assert_eq!(14, code);
 
-    err::log_then_panic(
-        "Test Panic",
-        error,    
-    );
+    err::log_then_panic("Test Panic", error);
 }

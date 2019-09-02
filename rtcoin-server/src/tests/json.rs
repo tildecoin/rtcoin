@@ -3,6 +3,8 @@
 // See LICENSE file for detailed license information.
 //
 
+extern crate test;
+
 use std::sync::mpsc;
 
 use crate::db;
@@ -29,6 +31,11 @@ fn test_from_string() {
     assert_eq!(from_str("MORE INVALID json", None), None);
 }
 
+#[bench]
+fn bench_from_string(b: &mut test::Bencher) {
+    b.iter(|| test_from_string())
+}
+
 #[test]
 fn test_json_to_comm() {
     let test_data = json!({
@@ -47,7 +54,7 @@ fn test_json_to_comm() {
     };
 
     match case.kind() {
-        db::Kind::Disconnect => { },
+        db::Kind::Disconnect => {}
         _ => panic!("Incorrect Kind: case 1"),
     }
 
@@ -63,7 +70,7 @@ fn test_json_to_comm() {
     };
 
     match case.kind() {
-        db::Kind::Send => { },
+        db::Kind::Send => {}
         _ => panic!("Incorrect Kind: case 2"),
     }
 
@@ -73,7 +80,12 @@ fn test_json_to_comm() {
     });
 
     match to_comm(&test_data, tx3) {
-        None => { },
+        None => {}
         _ => panic!("Received some, expected none: case 3"),
     }
+}
+
+#[bench]
+fn bench_json_to_comm(b: &mut test::Bencher) {
+    b.iter(|| test_json_to_comm())
 }

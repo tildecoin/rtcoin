@@ -3,6 +3,8 @@
 // See LICENSE file for detailed license information.
 //
 
+#![feature(test)]
+
 use std::{error::Error, fs, os::unix::net::UnixListener, path::Path, process, sync::mpsc, thread};
 
 use ctrlc;
