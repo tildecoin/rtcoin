@@ -153,3 +153,5 @@ fn check_pass(pass: &str) -> AuthResult<()> {
     pass.zeroize();
     Ok(())
 }
+
+pub fn rename(_comm: db::Comm, _db: &rusqlite::Connection) {}

@@ -175,8 +175,8 @@ impl DB {
             info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
                 Some(Kind::Register) => user::register(comm.clone(), &self.conn),
-                Some(Kind::Whoami) => query::whoami(comm, &self.conn),
-                Some(Kind::Rename) => {}
+                Some(Kind::Whoami) => query::whoami(comm.clone(), &self.conn),
+                Some(Kind::Rename) => user::rename(comm.clone(), &self.conn),
                 Some(Kind::Send) => {}
                 Some(Kind::Sign) => {}
                 Some(Kind::Balance) => {}
