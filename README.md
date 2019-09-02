@@ -31,6 +31,10 @@ be what users interact with to display their balances, transfer `tildecoin` to o
 
 ## Updates
 
+**2019.09.01**
+
+I took a short break to handle some things IRL that needed to be done and have since resumed development. Time to hack away!
+
 **2019.07.27**
 
 I've decided on prompting for the database password on `rtcoin-server` startup. This was a compromise that took into account implementation complexity, security, and user experience with respect to controlling the server.
