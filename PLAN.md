@@ -14,7 +14,7 @@ for `rtcoin` as of `02 August 2019`
 * Will prompt for a database password on startup. This will present additional complexity when attempting to control `rtcoin-server` from a traditional init system. However, this is a trade-off to make for additional security when compared to a stored password.
 * SQLite is accessed in serialized mode of operation
 * Three tables: Ledger, Archive, Users
-* Refactor to use `diesel` as an `ORM` soon rather than issue `SQL` by hand
+* Might refactor to use `diesel` as an `ORM` soon rather than issue `SQL` by hand
 
 **Server Daemon**
 * Three primary threads: Init, Ledger Worker, and Connection Worker.
@@ -49,6 +49,9 @@ for `rtcoin` as of `02 August 2019`
     * kind: the `enum` type of request mentioned in the Ledger Worker section.
     * args: arguments of the request. The argument string will be interpreted differently based on the kind of request.
     * `{ "kind": "whoami", "args": "foo_barrington" }`
+    * `{ "kind": "register", "args": "some_username\tsome_password\tpubkey_goes_here" }`
+    * Need to implement TLS or something
+    * `args` will be tab-delineated.
 * Verifies signature of each request. If it fails, let the client know, then disconnect/die.
 * Unpacks the JSON into a request struct.
 * Sends the request to the Ledger Worker along its channel.
