@@ -24,3 +24,19 @@ fn create_user_check_name_and_balance() {
 fn bench_user_make(b: &mut test::Bencher) {
     b.iter(|| create_user_check_name_and_balance())
 }
+
+#[test]
+#[should_panic]
+fn test_check_pass_too_short() {
+    check_pass("2short").unwrap();
+}
+
+#[test]
+fn test_check_pass_ok() {
+    check_pass("thispasswordislong").unwrap();
+}
+
+#[bench]
+fn bench_check_pass(b: &mut test::Bencher) {
+    b.iter(|| check_pass("somepasswordhere"))
+}

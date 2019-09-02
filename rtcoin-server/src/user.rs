@@ -143,7 +143,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
     pass.zeroize();
 }
 
-fn check_pass(pass: &str) -> AuthResult<()> {
+pub fn check_pass(pass: &str) -> AuthResult<()> {
     let mut pass = pass.to_string();
 
     if pass.len() < 12 {
