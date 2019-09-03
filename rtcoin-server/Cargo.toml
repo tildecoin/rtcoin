@@ -5,7 +5,7 @@ authors = ["Ben Morrison <ben@gbmor.dev>"]
 edition = "2018"
 
 [dependencies]
-#bcrypt = "^0.5"
+bcrypt = "^0.5"
 chrono = "^0.4"
 ctrlc = "^3.1"
 log = "^0.4"
