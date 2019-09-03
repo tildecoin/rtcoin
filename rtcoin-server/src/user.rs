@@ -53,7 +53,7 @@ impl fmt::Display for User {
 }
 
 impl User {
-    pub fn new(name: &str) -> User {
+    pub fn new(name: &str) -> Self {
         let pass = String::new();
         let name = name.to_string();
         let now = Utc::now().to_rfc2822();
@@ -93,7 +93,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
         None => return,
     };
     let user = args[0].clone();
-    let mut pass = args[1].clone();
+    let pass = args[1].clone();
     let pubkey = args[2].clone();
 
     match check_pass(&pass) {

@@ -3,7 +3,7 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{path::Path, sync::mpsc, thread};
+use std::{path::Path, sync::mpsc};
 
 use log::info;
 
@@ -202,14 +202,14 @@ impl DB {
 fn startup_check_tables(conn: &rusqlite::Connection) {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS ledger (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
-                type            TEXT NOT NULL, 
-                timestamp       TEXT NOT NULL, 
-                source          TEXT NOT NULL, 
-                destination     TEXT NOT NULL, 
-                amount          REAL NOT NULL, 
-                ledger_hash     TEXT NOT NULL, 
-                receipt_id      INTEGER NOT NULL, 
+                id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type            TEXT NOT NULL,
+                timestamp       TEXT NOT NULL,
+                source          TEXT NOT NULL,
+                destination     TEXT NOT NULL,
+                amount          REAL NOT NULL,
+                ledger_hash     TEXT NOT NULL,
+                receipt_id      INTEGER NOT NULL,
                 receipt_hash    TEXT NOT NULL
             )",
         NO_PARAMS,
