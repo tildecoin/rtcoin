@@ -16,7 +16,7 @@ fn create_user_check_name_and_balance() {
 
     let name = user.name();
     let bal = user.balance();
-    let bal_str = user.balance_as_string();
+    let bal_str = format!("{}", user.balance());
 
     assert_eq!(name, "Bob Bobson");
     assert_eq!(bal, 1000.0);

@@ -45,7 +45,7 @@ impl fmt::Display for User {
             f,
             " Name: {}\n Balance: {} tcoin\n Last Login: {}\n Account Age: {}",
             self.name(),
-            self.balance_as_string(),
+            self.balance(),
             self.last_login,
             acct_age
         )
@@ -74,10 +74,6 @@ impl User {
 
     pub fn balance(&self) -> f64 {
         self.balance
-    }
-
-    pub fn balance_as_string(&self) -> String {
-        format!("{}", self.balance)
     }
 }
 
