@@ -202,7 +202,7 @@ impl DB {
 fn startup_check_tables(conn: &rusqlite::Connection) {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS ledger (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 type            TEXT NOT NULL,
                 timestamp       TEXT NOT NULL,
                 source          TEXT NOT NULL,
@@ -218,7 +218,7 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS archive (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 type            TEXT NOT NULL,
                 timestamp       TEXT NOT NULL,
                 state           TEXT NOT NULL,
@@ -232,7 +232,7 @@ fn startup_check_tables(conn: &rusqlite::Connection) {
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS users (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 name        TEXT NOT NULL,
                 pass        TEXT NOT NULL,
                 pubkey      TEXT NOT NULL,

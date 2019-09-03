@@ -144,6 +144,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
                 Ok(_) => {}
                 Err(err) => log::warn!("{:?}", err),
             }
+            return;
         }
     }
 
@@ -225,7 +226,7 @@ pub fn rename(comm: db::Comm, db: &rusqlite::Connection) {
 }
 
 pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
-    let pass_verify_stmt = format!("SELECT pass FROM users WHERE user = :user");
+    let pass_verify_stmt = format!("SELECT pass FROM users WHERE name = :user");
 
     let stored_pass: String =
         match db.query_row_named(&pass_verify_stmt, &[(":user", &user)], |row| {
@@ -241,7 +242,11 @@ pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
             Err(_) => return false,
         };
 
-    match bcrypt::verify(pass, &stored_pass) {
+    let pass_bytes = pass.bytes().collect::<Vec<u8>>();
+
+    log::error!("{} == {}", pass, stored_pass);
+
+    match bcrypt::verify(&pass_bytes, &stored_pass) {
         Ok(boolean) => return boolean,
         Err(err) => {
             log::error!("Failed to verify password hash: {:?}", err);
