@@ -10,7 +10,6 @@ use std::sync::mpsc;
 use crate::db;
 use crate::user::*;
 
-#[ignore]
 #[test]
 fn create_user_check_name_and_balance() {
     let user = User::new("Bob Bobson");
@@ -42,13 +41,6 @@ fn create_user_check_name_and_balance() {
     let auth_out = auth("gbmor", "testpasswordhere", &db.conn);
     assert_eq!(true, auth_out);
 }
-
-#[ignore]
-#[bench]
-fn bench_user_make(b: &mut test::Bencher) {
-    b.iter(|| create_user_check_name_and_balance())
-}
-
 #[test]
 #[should_panic]
 fn test_check_pass_too_short() {

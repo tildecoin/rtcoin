@@ -195,7 +195,7 @@ pub fn rename(comm: db::Comm, db: &rusqlite::Connection) {
         }
     }
 
-    let stmt = format!("UPDATE users SET user = :new_user WHERE user = :old_user");
+    let stmt = format!("UPDATE users SET name = :new_user WHERE name = :old_user");
     let mut stmt = match db.prepare(&stmt) {
         Ok(s) => s,
         Err(err) => {
@@ -230,7 +230,7 @@ pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
 
     let stored_pass: String =
         match db.query_row_named(&pass_verify_stmt, &[(":user", &user)], |row| {
-            match row.get::<usize, String>(2) {
+            match row.get::<usize, String>(0) {
                 Ok(s) => Ok(s),
                 Err(err) => {
                     log::error!("Failed to get stored password hash for {}: {:?}", user, err);
@@ -243,8 +243,6 @@ pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
         };
 
     let pass_bytes = pass.bytes().collect::<Vec<u8>>();
-
-    log::error!("{} == {}", pass, stored_pass);
 
     match bcrypt::verify(&pass_bytes, &stored_pass) {
         Ok(boolean) => return boolean,
