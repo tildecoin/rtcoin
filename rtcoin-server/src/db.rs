@@ -51,6 +51,7 @@ pub enum Kind {
     Second,
     Disconnect,
     Empty,
+    Quit,
 }
 
 // When rows are serialized into plain text
@@ -177,7 +178,7 @@ impl DB {
                 Some(Kind::Register) => user::register(comm.clone(), &self.conn),
                 Some(Kind::Whoami) => query::whoami(comm.clone(), &self.conn),
                 Some(Kind::Rename) => user::rename(comm.clone(), &self.conn),
-                Some(Kind::Send) => {}
+                Some(Kind::Send) => user::send(comm.clone(), &self.conn),
                 Some(Kind::Sign) => {}
                 Some(Kind::Balance) => {}
                 Some(Kind::Verify) => {}

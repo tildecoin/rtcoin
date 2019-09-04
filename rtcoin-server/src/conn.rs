@@ -44,14 +44,8 @@ pub fn init(mut conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
         });
         let json_in: Value = json::from_str(&json_in, Some(&mut conn)).unwrap();
 
-        match json_in["kind"]
-            .to_string()
-            .chars()
-            .map(|c| c.to_lowercase().to_string())
-            .collect::<String>()
-            .as_ref()
-        {
-            "quit" => return,
+        match json_in["kind"].to_string().as_ref() {
+            "quit" => break,
             _ => {}
         }
 
@@ -65,7 +59,13 @@ pub fn init(mut conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
 // thread.
 fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) {
     let (tx, rx) = mpsc::channel::<db::Reply>();
-    let comm = json::to_comm(&json_in, tx).unwrap();
+    let comm = json::to_comm(&json_in, tx);
+
+    if let None = comm {
+        return;
+    }
+
+    let comm = comm.unwrap();
 
     // Filter out the queries users shouldn't make
     match comm.kind() {

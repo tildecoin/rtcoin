@@ -252,3 +252,5 @@ pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
         }
     }
 }
+
+pub fn send(_comm: db::Comm, _db: &rusqlite::Connection) {}

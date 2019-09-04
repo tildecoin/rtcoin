@@ -3,20 +3,14 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{
-    io::Write,
-    os::unix::net::UnixStream,
-    sync::mpsc,
-};
+use std::{io::Write, os::unix::net::UnixStream, sync::mpsc};
 
 use crate::db;
-use crate::db::{
-    Kind,
-};
+use crate::db::Kind;
 use crate::err;
 
-use serde_json::Value;
 use log::error;
+use serde_json::Value;
 
 // Deserializes a JSON Value struct into a db::Comm,
 // ready for passing to the ledger worker thread.
@@ -26,6 +20,7 @@ pub fn to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
     let json_kind = json["kind"].as_str()?;
     let json_kind = json_kind.to_lowercase();
     let kind: db::Kind = match &json_kind[..] {
+        "quit" => return None,
         "register" => Kind::Register,
         "whoami" => Kind::Whoami,
         "rename" => Kind::Rename,
@@ -37,23 +32,18 @@ pub fn to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
         "audit" => Kind::Audit,
         "resolve" => Kind::Resolve,
         "second" => Kind::Second,
-        "query" => Kind::Query,             // Query and Disconnect are internal
-        "disconnect" => Kind::Disconnect,   // values for miscellaneous database
-        &_ => return None,                  // queries and shutting down the DB.
+        "query" => Kind::Query,           // Query and Disconnect are internal
+        "disconnect" => Kind::Disconnect, // values for miscellaneous database
+        &_ => return None,                // queries and shutting down the DB.
     };
 
-    let args = json["args"].as_str()?
+    let args = json["args"]
+        .as_str()?
         .split_whitespace()
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    Some(
-        db::Comm::new(
-            Some(kind), 
-            Some(args), 
-            Some(tx),
-        )
-    )
+    Some(db::Comm::new(Some(kind), Some(args), Some(tx)))
 }
 
 // Takes a string, outputs JSON.
@@ -67,13 +57,7 @@ pub fn from_str(json_in: &str, conn: Option<&mut UnixStream>) -> Option<serde_js
             let err = format!("{}", err);
             let out = err::Resp::new(02, "JSON Error", &err);
 
-            error!(
-                "\nError {}:\n{}\n{}", 
-                out.code(), 
-                out.kind(), 
-                out.details(),
-            );
-            
+            error!("\nError {}:\n{}\n{}", out.code(), out.kind(), out.details(),);
             let out = out.to_bytes();
 
             if let Some(conn) = conn {
@@ -81,5 +65,5 @@ pub fn from_str(json_in: &str, conn: Option<&mut UnixStream>) -> Option<serde_js
             }
             None
         }
-    }
+    };
 }
