@@ -253,4 +253,10 @@ pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
     }
 }
 
-pub fn send(_comm: db::Comm, _db: &rusqlite::Connection) {}
+pub fn send(comm: db::Comm, db: &rusqlite::Connection) {
+    let args = if let Some(args) = comm.args {
+        args
+    } else {
+        vec![]
+    };
+}
