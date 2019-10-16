@@ -68,6 +68,18 @@ impl User {
         }
     }
 
+    pub fn set_pass(&mut self, pass: &str) {
+        self.pass = pass.into();
+    }
+
+    pub fn scrub_pass(&mut self) {
+        self.pass.zeroize();
+    }
+
+    pub fn get_ctime(&self) -> String {
+        self.created.clone()
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -78,7 +90,6 @@ impl User {
 }
 
 pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
-    let thetime = chrono::Utc::now().to_rfc2822();
     let tx = match &comm.origin {
         Some(t) => t,
         None => return,
@@ -88,7 +99,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
         Some(val) => val,
         None => return,
     };
-    let user = args[0].clone();
+    let mut user = User::new(&args[0]);
     let pass = args[1].clone();
     let pubkey = args[2].clone();
 
@@ -117,6 +128,8 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
         }
     };
 
+    user.set_pass(&pass);
+
     let mut stmt = match db.prepare(&query) {
         Ok(st) => st,
         Err(err) => {
@@ -130,12 +143,12 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
     };
 
     match stmt.execute_named(&[
-        (":name", &user),
+        (":name", &user.name()),
         (":pass", &pass),
         (":pubkey", &pubkey),
-        (":balance", &1000.0),
-        (":created", &thetime),
-        (":last_login", &thetime),
+        (":balance", &user.balance()),
+        (":created", &user.get_ctime()),
+        (":last_login", &user.get_ctime()),
     ]) {
         Ok(_) => {}
         Err(err) => {
@@ -155,6 +168,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
     }
 
     pass.zeroize();
+    user.scrub_pass();
 }
 
 pub fn check_pass(pass: &str) -> AuthResult<()> {
