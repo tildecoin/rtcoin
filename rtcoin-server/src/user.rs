@@ -21,7 +21,7 @@ pub struct User {
     last_login: String,
 }
 
-type AuthResult<T> = std::result::Result<T, String>;
+type AuthResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 // The std::fmt::Display trait, so a User
 // can be passed to a print!() macro. Will
@@ -94,7 +94,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
 
     match check_pass(&pass) {
         Err(err) => {
-            match tx.send(db::Reply::Error(err)) {
+            match tx.send(db::Reply::Error(format!("{:?}", err))) {
                 Ok(_) => {}
                 Err(err) => log::warn!("{:?}", err),
             }
