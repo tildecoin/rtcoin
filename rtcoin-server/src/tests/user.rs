@@ -57,6 +57,7 @@ fn bench_check_pass(b: &mut test::Bencher) {
     b.iter(|| check_pass("somepasswordhere"))
 }
 
+#[ignore]
 #[bench]
 fn bench_register(b: &mut test::Bencher) {
     let (_, rx) = mpsc::channel::<db::Comm>();

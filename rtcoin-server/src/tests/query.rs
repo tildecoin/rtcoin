@@ -38,6 +38,7 @@ fn expect_no_rows() {
     fs::remove_file(path).unwrap();
 }
 
+#[ignore]
 #[bench]
 fn bench_whoami(b: &mut test::Bencher) {
     let (_, rx) = mpsc::channel::<db::Comm>();
