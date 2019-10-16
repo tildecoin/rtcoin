@@ -273,4 +273,6 @@ pub fn send(comm: db::Comm, db: &rusqlite::Connection) {
     } else {
         vec![]
     };
+
+    unimplemented!();
 }
