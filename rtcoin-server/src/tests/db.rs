@@ -27,7 +27,7 @@ fn worker_thread_spawn_send_recv_query_rows() {
     let stmt = "SELECT * FROM ledger WHERE Source = 'Bob'";
     let stmt = db.conn.prepare(stmt).unwrap();
 
-    if let Err(_) = query::to_ledger_entry(stmt) {
+    if query::to_ledger_entry(stmt).is_err() {
         panic!("failure in query_to_ledger_rows()");
     }
     // Above, comm takes ownership of the previous
@@ -85,5 +85,5 @@ fn comm_kind() {
 
 #[bench]
 fn comm_kind_bench(bn: &mut test::Bencher) {
-    bn.iter(|| comm_kind())
+    bn.iter(comm_kind)
 }

@@ -3,16 +3,12 @@
 // See LICENSE file for detailed license information.
 //
 
-use std::{
-    fmt,
-};
+use std::fmt;
 
-use log::{
-    error,
-};
+use log;
 
 // Used for quickly serializing an error into bytes
-// (or string) so that it may be sent across the socket. 
+// (or string) so that it may be sent across the socket.
 // Current error codes:
 //      01: Worker error
 //      02: Could not parse request as JSON
@@ -51,9 +47,7 @@ impl Resp {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        format!("{:#?}", self)
-            .as_bytes()
-            .to_owned()
+        format!("{:#?}", self).as_bytes().to_owned()
     }
     pub fn code(&self) -> u32 {
         self.code
@@ -69,9 +63,10 @@ impl Resp {
 // I found myself writing this same construction
 // a few times repeatedly.
 pub fn log_then_panic<T>(context: &str, err: T)
-    where T: fmt::Debug
-    {
-        let msg = format!("{}: {:?}", context, err);
-        error!("{}", msg);
-        panic!("{}", msg);
-    }
+where
+    T: fmt::Debug,
+{
+    let msg = format!("{}: {:?}", context, err);
+    log::error!("{}", msg);
+    panic!("{}", msg);
+}

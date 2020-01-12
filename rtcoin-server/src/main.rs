@@ -9,7 +9,7 @@ use std::{error::Error, fs, os::unix::net::UnixListener, path::Path, process, sy
 
 use ctrlc;
 
-use log::{error, info, warn};
+use log;
 
 use num_cpus;
 use rpassword;
@@ -31,7 +31,7 @@ use db::DB;
 
 fn main() -> Result<(), Box<dyn Error>> {
     logging::init();
-    info!("rtcoin-server is initializing.\n");
+    log::info!("rtcoin-server is initializing.\n");
 
     eprintln!("\nrtcoin-server 0.1-dev");
     eprintln!("\nPlease enter the ledger password:");
@@ -47,43 +47,43 @@ fn main() -> Result<(), Box<dyn Error>> {
     eprintln!();
     // Create communication channel to the ledger database, then
     // spawn the ledger worker to listen for query requests.
-    info!("Starting ledger worker...");
+    log::info!("Starting ledger worker...");
     let (tx, rx) = mpsc::channel::<db::Comm>();
     thread::spawn(move || spawn_ledger_worker(db_key, rx));
 
     // If the socket exists already, remove it.
     let sock = Path::new(conn::SOCK);
     if fs::metadata(sock).is_ok() {
-        warn!("Socket {} already exists.", conn::SOCK);
+        log::warn!("Socket {} already exists.", conn::SOCK);
         fs::remove_file(sock)?;
     }
 
     // Handle SIGINT / ^C
     let ctrlc_tx = tx.clone();
     ctrlc::set_handler(move || {
-        warn!("^C / SIGINT Caught. Cleaning up ...");
+        log::warn!("^C / SIGINT Caught. Cleaning up ...");
         if fs::metadata(sock).is_ok() {
-            info!("Removing socket file");
+            log::info!("Removing socket file");
             fs::remove_file(sock).unwrap();
         }
 
-        info!("SIGINT: Sending disconnect signal to ledger worker queue");
+        log::info!("SIGINT: Sending disconnect signal to ledger worker queue");
         let (reply_tx, sigint_rx) = mpsc::channel::<db::Reply>();
         let db_disconnect_signal = db::Comm::new(Some(db::Kind::Disconnect), None, Some(reply_tx));
 
         match ctrlc_tx.send(db_disconnect_signal) {
             Ok(_) => {}
-            Err(err) => error!(
+            Err(err) => log::error!(
                 "SIGINT: Failed to send disconnect signal to ledger worker: {}",
                 err
             ),
         }
         // Block to allow database to close
         sigint_rx.recv().unwrap_or_else(|error| {
-            warn!("{:?}", error);
+            log::warn!("{:?}", error);
             process::exit(1);
         });
-        info!("¡Hasta luego!");
+        log::info!("¡Hasta luego!");
         process::exit(0);
     })
     .unwrap_or_else(|error| {
@@ -93,7 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Bind to the socket. Spawn a new connection
     // worker thread for each client connection.
-    info!("Binding to socket: {}", conn::SOCK);
+    log::info!("Binding to socket: {}", conn::SOCK);
     spawn_for_connections(&sock, tx);
 
     // Tidy up
@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn spawn_ledger_worker(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
     // This next call opens the actual database connection.
     // It also creates the tables if they don't yet exist.
-    info!("Connecting to database: {}", db::PATH);
+    log::info!("Connecting to database: {}", db::PATH);
     let ledger = DB::connect(db::PATH, db_key.clone(), rx);
     db_key.zeroize();
 
@@ -113,15 +113,15 @@ fn spawn_ledger_worker(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
     let ledger_worker = thread::Builder::new();
     let ledger_worker = ledger_worker.name("Ledger Worker".into());
 
-    info!("Starting ledger worker process...");
+    log::info!("Starting ledger worker process...");
     let worker_thread = ledger_worker
         .spawn(move || {
             // once the worker_thread() method returns,
             // begin cleanup. so the whole process can exit.
             let disconnect_comm = ledger.worker_thread();
             match ledger.conn.close() {
-                Err(err) => error!("Error closing database connection: {:?}", err),
-                Ok(_) => info!("Database connection successfully closed"),
+                Err(err) => log::error!("Error closing database connection: {:?}", err),
+                Ok(_) => log::info!("Database connection successfully closed"),
             }
 
             // Once we've closed the DB connection, let the
@@ -140,7 +140,7 @@ fn spawn_ledger_worker(mut db_key: String, rx: mpsc::Receiver<db::Comm>) {
 
     // Block execution until the thread we just
     // spawned returns.
-    info!("Startup finished!");
+    log::info!("Startup finished!");
     worker_thread.join().unwrap_or_else(|error| {
         err::log_then_panic("Ledger Worker", error);
         panic!() // otherwise rustc complains about return type
@@ -159,14 +159,14 @@ fn spawn_for_connections(sock: &Path, tx: mpsc::Sender<db::Comm>) {
     // resource hogs.
     let thread_num = num_cpus::get() * 4;
     let pool = ThreadPool::with_name("Client Connection".into(), thread_num);
-    info!("Using pool of {} threads", thread_num);
+    log::info!("Using pool of {} threads", thread_num);
 
     while let Ok((conn, addr)) = lstnr.accept() {
         // This is the channel that allows
         // clients to communicate with the
         // ledger worker process.
         let trx = tx.clone();
-        info!("New client connection: {:?}", addr);
+        log::info!("New client connection: {:?}", addr);
         pool.execute(move || {
             conn::init(conn, trx);
         });

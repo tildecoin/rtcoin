@@ -3,6 +3,10 @@
 // See LICENSE file for detailed license information.
 //
 
+// Since tildecoin isn't supposed to be used for anything serious,
+// the rounding issues in floating point arithmetic are acceptable.
+#![allow(clippy::float_cmp)]
+
 extern crate test;
 
 use std::sync::mpsc;

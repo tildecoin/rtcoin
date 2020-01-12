@@ -5,7 +5,7 @@
 
 use std::{path::Path, sync::mpsc};
 
-use log::info;
+use log;
 
 use rusqlite::{Connection, OpenFlags, NO_PARAMS};
 
@@ -119,14 +119,14 @@ impl Comm {
 
     pub fn kind(&self) -> &Kind {
         match &self.kind {
-            Some(kind) => return &kind,
-            None => return &Kind::Empty,
+            Some(kind) => &kind,
+            None => &Kind::Empty,
         }
     }
     pub fn args(&self) -> Vec<String> {
         match &self.args {
-            Some(args) => return args.clone(),
-            None => return Vec::<String>::new(),
+            Some(args) => args.clone(),
+            None => Vec::<String>::new(),
         }
     }
 }
@@ -173,7 +173,7 @@ impl DB {
     // process the incoming Comms.
     pub fn worker_thread(&self) -> Comm {
         while let Ok(comm) = self.pipe.recv() {
-            info!("Ledger Worker :: Received {:?}", comm);
+            log::info!("Ledger Worker :: Received {:?}", comm);
             match comm.kind {
                 Some(Kind::Register) => user::register(comm.clone(), &self.conn),
                 Some(Kind::Whoami) => query::whoami(comm.clone(), &self.conn),
@@ -187,7 +187,7 @@ impl DB {
                 Some(Kind::Resolve) => {}
                 Some(Kind::Second) => {}
                 Some(Kind::Query) => {}
-                Some(Kind::Disconnect) => return comm.clone(),
+                Some(Kind::Disconnect) => return comm,
                 _ => continue,
             }
         }

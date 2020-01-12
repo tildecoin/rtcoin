@@ -33,7 +33,7 @@ fn test_from_string() {
 
 #[bench]
 fn bench_from_string(b: &mut test::Bencher) {
-    b.iter(|| test_from_string())
+    b.iter(test_from_string);
 }
 
 #[test]
@@ -87,5 +87,5 @@ fn test_json_to_comm() {
 
 #[bench]
 fn bench_json_to_comm(b: &mut test::Bencher) {
-    b.iter(|| test_json_to_comm())
+    b.iter(test_json_to_comm)
 }

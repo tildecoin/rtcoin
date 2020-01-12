@@ -3,10 +3,7 @@
 // See LICENSE file for detailed license information.
 //
 
-use log::{
-    error,
-    info,
-};
+use log;
 use rusqlite;
 use rusqlite::NO_PARAMS;
 
@@ -15,17 +12,17 @@ use crate::err;
 
 // Accepts the comm of kind Whoami and arg of
 //     vec["user", (username)]
-// Responds with the public key associated 
+// Responds with the public key associated
 // with the account.
 pub fn whoami(comm: db::Comm, conn: &rusqlite::Connection) {
     let args = comm.args();
     let query = "SELECT pubkey FROM users WHERE name = :name";
-    
-    // The ownership system causes the channel to 
+
+    // The ownership system causes the channel to
     // be moved, so I had to clone it.
-    let origin_channel = comm.origin.unwrap().clone();
+    let origin_channel = comm.origin.unwrap();
     // Twice.
-    let origin_channel_clone = origin_channel.clone();
+    let origin_channel_clone = origin_channel;
 
     // Prevent out-of-bounds panics
     // from malformed requests.
@@ -36,31 +33,28 @@ pub fn whoami(comm: db::Comm, conn: &rusqlite::Connection) {
     };
 
     let query_for_logs = format!("{}, {}", query, user);
-    info!("New query: {}", query_for_logs);
+    log::info!("New query: {}", query_for_logs);
     let mut rowstmt = conn.prepare(&query).unwrap();
-    
     // If the query fails, we can return an err::Resp
     // as long as it's been serialized into a string.
-    // Lets us continue on without adding complex 
+    // Lets us continue on without adding complex
     // execution branches for handling errors.
-    let row = rowstmt.query_row_named(
-        &[(":name", &user)], 
-        |row| {
-            Ok(row.get(0).unwrap())
-        })
+    let row = rowstmt
+        .query_row_named(&[(":name", &user)], |row| Ok(row.get(0).unwrap()))
         .unwrap_or_else(|err| {
             let err = format!("Query failed: {}", err);
-            error!("{} :: {}", err, query_for_logs);
-            err::Resp::new(04, "Query Error", &err).to_string()
+            log::error!("{} :: {}", err, query_for_logs);
+            err::Resp::new(4, "Query Error", &err).to_string()
         });
 
-    let reply = match row.contains("Query Error") {
-            true => db::Reply::Error(row),
-            false => db::Reply::Data(row),
-        };
+    let reply = if row.contains("Query Error") {
+        db::Reply::Error(row)
+    } else {
+        db::Reply::Data(row)
+    };
 
     if let Err(err) = origin_channel_clone.send(reply) {
-        error!("Failed to send reply: {}", err);
+        log::error!("Failed to send reply: {}", err);
     }
 }
 
@@ -81,10 +75,7 @@ pub fn to_ledger_entry(mut stmt: rusqlite::Statement) -> rusqlite::Result<Vec<db
         })
     })?;
 
-    Ok(
-        rows.map(|row| {
-            row.unwrap()
-        })
-        .collect::<Vec<db::LedgerEntry>>()
-    )
+    Ok(rows
+        .map(|row| row.unwrap())
+        .collect::<Vec<db::LedgerEntry>>())
 }

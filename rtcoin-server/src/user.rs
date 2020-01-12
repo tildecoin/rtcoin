@@ -94,7 +94,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
         Some(t) => t,
         None => return,
     };
-    let query = format!("INSERT INTO users (name, pass, pubkey, balance, created, last_login) VALUES (:name, :pass, :pubkey, :balance, :created, :last_login)");
+    let query = "INSERT INTO users (name, pass, pubkey, balance, created, last_login) VALUES (:name, :pass, :pubkey, :balance, :created, :last_login)";
     let args = match &comm.args {
         Some(val) => val,
         None => return,
@@ -103,15 +103,11 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
     let pass = args[1].clone();
     let pubkey = args[2].clone();
 
-    match check_pass(&pass) {
-        Err(err) => {
-            match tx.send(db::Reply::Error(format!("{:?}", err))) {
-                Ok(_) => {}
-                Err(err) => log::warn!("{:?}", err),
-            }
-            return;
+    if let Err(err) = check_pass(&pass) {
+        if let Err(err) = tx.send(db::Reply::Error(format!("{:?}", err))) {
+            log::warn!("{:?}", err);
         }
-        Ok(_) => {}
+        return;
     }
 
     let mut pass = match bcrypt::hash(&pass, 12) {
@@ -130,7 +126,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
 
     user.set_pass(&pass);
 
-    let mut stmt = match db.prepare(&query) {
+    let mut stmt = match db.prepare(query) {
         Ok(st) => st,
         Err(err) => {
             let err = format!("Internal Error: {:?}", err);
@@ -195,22 +191,19 @@ pub fn rename(comm: db::Comm, db: &rusqlite::Connection) {
     let mut pass = args[2].clone();
     args[2].zeroize();
 
-    match auth(&old_user, &pass, &db) {
-        true => {
-            log::info!(
-                "User {} authenticated for: username change to {}",
-                old_user,
-                new_user
-            );
-        }
-        false => {
-            log::error!("Auth failed for user {}", old_user);
-            return;
-        }
+    if auth(&old_user, &pass, &db) {
+        log::info!(
+            "User {} authenticated for: username change to {}",
+            old_user,
+            new_user
+        );
+    } else {
+        log::error!("Auth failed for user {}", old_user);
+        return;
     }
 
-    let stmt = format!("UPDATE users SET name = :new_user WHERE name = :old_user");
-    let mut stmt = match db.prepare(&stmt) {
+    let stmt = "UPDATE users SET name = :new_user WHERE name = :old_user";
+    let mut stmt = match db.prepare(stmt) {
         Ok(s) => s,
         Err(err) => {
             log::error!("Failed to prepare update username statement: {:?}", err);
@@ -240,10 +233,10 @@ pub fn rename(comm: db::Comm, db: &rusqlite::Connection) {
 }
 
 pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
-    let pass_verify_stmt = format!("SELECT pass FROM users WHERE name = :user");
+    let pass_verify_stmt = "SELECT pass FROM users WHERE name = :user";
 
     let stored_pass: String =
-        match db.query_row_named(&pass_verify_stmt, &[(":user", &user)], |row| {
+        match db.query_row_named(pass_verify_stmt, &[(":user", &user)], |row| {
             match row.get::<usize, String>(0) {
                 Ok(s) => Ok(s),
                 Err(err) => {
@@ -259,16 +252,16 @@ pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
     let pass_bytes = pass.bytes().collect::<Vec<u8>>();
 
     match bcrypt::verify(&pass_bytes, &stored_pass) {
-        Ok(boolean) => return boolean,
+        Ok(boolean) => boolean,
         Err(err) => {
             log::error!("Failed to verify password hash: {:?}", err);
-            return false;
+            false
         }
     }
 }
 
-pub fn send(comm: db::Comm, db: &rusqlite::Connection) {
-    let args = if let Some(args) = comm.args {
+pub fn send(comm: db::Comm, _db: &rusqlite::Connection) {
+    let _args = if let Some(args) = comm.args {
         args
     } else {
         vec![]

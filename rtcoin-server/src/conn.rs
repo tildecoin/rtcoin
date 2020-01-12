@@ -44,9 +44,8 @@ pub fn init(mut conn: UnixStream, pipe: mpsc::Sender<db::Comm>) {
         });
         let json_in: Value = json::from_str(&json_in, Some(&mut conn)).unwrap();
 
-        match json_in["kind"].to_string().as_ref() {
-            "quit" => break,
-            _ => {}
+        if let "quit" = json_in["kind"].to_string().as_ref() {
+            break;
         }
 
         route(&mut conn, &json_in, &pipe);
@@ -61,7 +60,7 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
     let (tx, rx) = mpsc::channel::<db::Reply>();
     let comm = json::to_comm(&json_in, tx);
 
-    if let None = comm {
+    if comm.is_none() {
         return;
     }
 
@@ -86,7 +85,7 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
     if resp.is_none() {
         log::info!("Closing client connection");
         let out = err::Resp::new(
-            01,
+            1,
             "Worker Error",
             "No response from worker. Closing connection.",
         )
@@ -100,18 +99,18 @@ fn route(conn: &mut UnixStream, json_in: &Value, pipe: &mpsc::Sender<db::Comm>) 
 }
 
 fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Option<db::Reply> {
-    return match recv {
+    match recv {
         Ok(val) => Some(val),
         Err(err) => {
             let err = format!("{}", err);
-            let out = err::Resp::new(01, "Worker Error", &err);
+            let out = err::Resp::new(1, "Worker Error", &err);
             let out = out.to_bytes();
 
             conn.write_all(&out).unwrap();
             log::error!("Error in Ledger Worker Response: {}", err);
             None
         }
-    };
+    }
 }
 
 // Response when the connection worker receives an
@@ -119,7 +118,7 @@ fn recv(recv: Result<db::Reply, mpsc::RecvError>, conn: &mut UnixStream) -> Opti
 // "Query" actions.
 fn invalid_request(conn: &mut UnixStream, kind: &str) {
     let details = format!("\"{}\" is not an allowed request type", kind);
-    let msg = err::Resp::new(03, "Invalid Request", &details);
+    let msg = err::Resp::new(3, "Invalid Request", &details);
     let msg = msg.to_bytes();
 
     log::error!("Received invalid request from client: {}", details);

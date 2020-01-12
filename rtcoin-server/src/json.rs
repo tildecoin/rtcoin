@@ -9,7 +9,7 @@ use crate::db;
 use crate::db::Kind;
 use crate::err;
 
-use log::error;
+use log;
 use serde_json::Value;
 
 // Deserializes a JSON Value struct into a db::Comm,
@@ -51,13 +51,13 @@ pub fn to_comm(json: &Value, tx: mpsc::Sender<db::Reply>) -> Option<db::Comm> {
 // TODO: This is an unnecessary function. I need to get rid of it
 //       and just call serde_json::from_str() directly
 pub fn from_str(json_in: &str, conn: Option<&mut UnixStream>) -> Option<serde_json::Value> {
-    return match serde_json::from_str(&json_in) {
+    match serde_json::from_str(&json_in) {
         Ok(val) => Some(val),
         Err(err) => {
             let err = format!("{}", err);
-            let out = err::Resp::new(02, "JSON Error", &err);
+            let out = err::Resp::new(2, "JSON Error", &err);
 
-            error!("\nError {}:\n{}\n{}", out.code(), out.kind(), out.details(),);
+            log::error!("\nError {}:\n{}\n{}", out.code(), out.kind(), out.details(),);
             let out = out.to_bytes();
 
             if let Some(conn) = conn {
@@ -65,5 +65,5 @@ pub fn from_str(json_in: &str, conn: Option<&mut UnixStream>) -> Option<serde_js
             }
             None
         }
-    };
+    }
 }

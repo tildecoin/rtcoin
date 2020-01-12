@@ -20,7 +20,7 @@ fn msg_resp() {
 
 #[bench]
 fn msg_resp_bench(b: &mut test::Bencher) {
-    b.iter(|| msg_resp())
+    b.iter(msg_resp)
 }
 
 #[test]
