@@ -3,3 +3,26 @@ members = [
     "rtcoin-client",
     "rtcoin-server",
 ]
+
+[profile.release]
+panic = "abort"
+overflow-checks = false
+opt-level = 3
+lto = true
+debug = false
+incremental = false
+
+[profile.dev]
+panic = "unwind"
+overflow-checks = true
+opt-level = 0
+debug = true
+lto = false
+incremental = true
+
+[profile.test]
+overflow-checks = true
+opt-level = 0
+debug = true
+lto = false
+incremental = true
