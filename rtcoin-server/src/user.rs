@@ -114,11 +114,8 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
         Ok(hash) => hash,
         Err(err) => {
             log::error!("Failed to hash password: {:?}", err);
-            match tx.send(db::Reply::Error("Internal Error: Password Hashing".into())) {
-                Ok(_) => {}
-                Err(err) => {
-                    log::error!("Failed to send reply to client: {:?}", err);
-                }
+            if let Err(err) = tx.send(db::Reply::Error("Internal Error: Password Hashing".into())) {
+                log::error!("Failed to send reply to client: {:?}", err);
             }
             return;
         }
@@ -130,15 +127,14 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
         Ok(st) => st,
         Err(err) => {
             let err = format!("Internal Error: {:?}", err);
-            match tx.send(db::Reply::Error(err)) {
-                Ok(_) => {}
-                Err(err) => log::warn!("{:?}", err),
+            if let Err(err) = tx.send(db::Reply::Error(err)) {
+                log::warn!("{:?}", err);
             }
             return;
         }
     };
 
-    match stmt.execute_named(&[
+    if let Err(err) = stmt.execute_named(&[
         (":name", &user.name()),
         (":pass", &pass),
         (":pubkey", &pubkey),
@@ -146,21 +142,16 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
         (":created", &user.get_ctime()),
         (":last_login", &user.get_ctime()),
     ]) {
-        Ok(_) => {}
-        Err(err) => {
-            let err = format!("Internal Error: {:?}", err);
-            match tx.send(db::Reply::Error(err)) {
-                Ok(_) => {}
-                Err(err) => log::warn!("{:?}", err),
-            }
-            return;
+        let err = format!("Internal Error: {:?}", err);
+        if let Err(err) = tx.send(db::Reply::Error(err)) {
+            log::warn!("{:?}", err);
         }
+        return;
     }
 
     log::info!("Registration Successful: {}", user);
-    match tx.send(db::Reply::Info("Registration Successful".into())) {
-        Ok(_) => {}
-        Err(err) => log::warn!("{:?}", err),
+    if let Err(err) = tx.send(db::Reply::Info("Registration Successful".into())) {
+        log::warn!("{:?}", err);
     }
 
     pass.zeroize();
@@ -168,13 +159,9 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
 }
 
 pub fn check_pass(pass: &str) -> AuthResult<()> {
-    let mut pass = pass.to_string();
-
     if pass.len() < 12 {
         return Err("Password too short".into());
     }
-
-    pass.zeroize();
     Ok(())
 }
 
@@ -214,12 +201,9 @@ pub fn rename(comm: db::Comm, db: &rusqlite::Connection) {
     match stmt.execute_named(&[(":new_user", &new_user), (":old_user", &old_user)]) {
         Ok(_) => {
             if let Some(tx) = comm.origin {
-                match tx.send(db::Reply::Info("Username update successful".into())) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        log::error!("Failed to send success message: {:?}", err);
-                        return;
-                    }
+                if let Err(err) = tx.send(db::Reply::Info("Username update successful".into())) {
+                    log::error!("Failed to send success message: {:?}", err);
+                    return;
                 }
             }
         }
