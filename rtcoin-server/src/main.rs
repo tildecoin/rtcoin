@@ -71,12 +71,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let (reply_tx, sigint_rx) = mpsc::channel::<db::Reply>();
         let db_disconnect_signal = db::Comm::new(Some(db::Kind::Disconnect), None, Some(reply_tx));
 
-        match ctrlc_tx.send(db_disconnect_signal) {
-            Ok(_) => {}
-            Err(err) => log::error!(
+        if let Err(err) = ctrlc_tx.send(db_disconnect_signal) {
+            log::error!(
                 "SIGINT: Failed to send disconnect signal to ledger worker: {}",
                 err
-            ),
+            );
         }
         // Block to allow database to close
         sigint_rx.recv().unwrap_or_else(|error| {
