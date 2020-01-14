@@ -15,6 +15,9 @@ for `rtcoin` as of `23 November 2019`
 * SQLite is accessed in serialized mode of operation
 * Three tables: Ledger, Archive, Users
 
+**Users Table**
+* Passwords will be stored as a `bcrypt` hash
+
 **Server Daemon**
 * Three primary threads: Init, Ledger Worker, and Connection Worker.
 * There is a fourth thread listening for `SIGINT`
@@ -47,7 +50,7 @@ for `rtcoin` as of `23 November 2019`
     * kind: the `enum` type of request mentioned in the Ledger Worker section.
     * args: arguments of the request. The argument string will be interpreted differently based on the kind of request.
     * `{ "kind": "whoami", "args": "foo_barrington" }`
-    * `{ "kind": "register", "args": "some_username\tsome_password_hash\tpubkey_goes_here" }`
+    * `{ "kind": "register", "args": "some_username\tsome_password\tpubkey_goes_here" }`
     * `args` will be tab-delineated.
 * Verifies signature of each request. If it fails, let the client know, then disconnect/die.
 * Unpacks the JSON into a request struct.
@@ -65,4 +68,4 @@ for `rtcoin` as of `23 November 2019`
 
 ## `rtcoin-client`
 * On startup, check for key pair to be used to sign/verify communications with the server. If the key pair doesn't exist, generate one.
-* Any time a password must be sent along with a request, a `SHA-256` hash of the password will be sent.
+* Communications with `rtcoin-server` will be via TLS
