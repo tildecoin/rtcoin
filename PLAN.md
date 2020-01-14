@@ -68,4 +68,4 @@ for `rtcoin` as of `23 November 2019`
 
 ## `rtcoin-client`
 * On startup, check for key pair to be used to sign/verify communications with the server. If the key pair doesn't exist, generate one.
-* Communications with `rtcoin-server` will be via TLS
+* Communications with `rtcoin-server` will need to be secured. I need to come up with a scheme for this.
