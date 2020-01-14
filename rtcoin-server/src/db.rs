@@ -180,7 +180,7 @@ impl DB {
                 Some(Kind::Rename) => user::rename(comm.clone(), &self.conn),
                 Some(Kind::Send) => user::send(comm.clone(), &self.conn),
                 Some(Kind::Sign) => {}
-                Some(Kind::Balance) => {}
+                Some(Kind::Balance) => user::balance(comm.clone(), &self.conn),
                 Some(Kind::Verify) => {}
                 Some(Kind::Contest) => {}
                 Some(Kind::Audit) => {}

@@ -259,3 +259,15 @@ pub fn send(comm: db::Comm, _db: &rusqlite::Connection) {
 
     unimplemented!();
 }
+
+pub fn balance(comm: db::Comm, _db: &rusqlite::Connection) {
+    let _args = match comm.args {
+        Some(val) => val,
+        None => {
+            log::error!("Received None for Comm args");
+            return;
+        }
+    };
+
+    unimplemented!();
+}
