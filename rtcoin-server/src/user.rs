@@ -89,6 +89,7 @@ impl User {
     }
 }
 
+// Accepts a registration request and adds a new user to the database
 pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
     let tx = match &comm.origin {
         Some(t) => t,
@@ -158,6 +159,7 @@ pub fn register(comm: db::Comm, db: &rusqlite::Connection) {
     user.scrub_pass();
 }
 
+// Right now this just checks for a minimum password length
 pub fn check_pass(pass: &str) -> AuthResult<()> {
     if pass.len() < 12 {
         return Err("Password too short".into());
@@ -165,6 +167,8 @@ pub fn check_pass(pass: &str) -> AuthResult<()> {
     Ok(())
 }
 
+// Change a username. This is incomplete. I'll need to address the
+// historical transactions associated with the old user somehow.
 pub fn rename(comm: db::Comm, db: &rusqlite::Connection) {
     let mut args = match comm.args {
         Some(val) => val,
@@ -216,6 +220,8 @@ pub fn rename(comm: db::Comm, db: &rusqlite::Connection) {
     pass.zeroize();
 }
 
+// Authenticates a user's provided password hash against the
+// hash stored in the database.
 pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
     let pass_verify_stmt = "SELECT pass FROM users WHERE name = :user";
 
@@ -250,6 +256,7 @@ pub fn auth(user: &str, pass: &str, db: &rusqlite::Connection) -> bool {
     }
 }
 
+// TODO: send tildecoin from one user to another
 pub fn send(comm: db::Comm, _db: &rusqlite::Connection) {
     let _args = if let Some(args) = comm.args {
         args
@@ -260,6 +267,7 @@ pub fn send(comm: db::Comm, _db: &rusqlite::Connection) {
     unimplemented!();
 }
 
+// TODO: retrieve the balance for a user
 pub fn balance(comm: db::Comm, _db: &rusqlite::Connection) {
     let _args = match comm.args {
         Some(val) => val,
