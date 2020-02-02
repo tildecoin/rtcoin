@@ -5,24 +5,37 @@ members = [
 ]
 
 [profile.release]
-panic = "abort"
-overflow-checks = false
 opt-level = 3
-lto = true
+lto = "thin"
 debug = false
-incremental = false
+debug-assertions = false
+overflow-checks = false
+panic = "abort"
+incremental = true
 
 [profile.dev]
-panic = "unwind"
-overflow-checks = true
 opt-level = 0
-debug = true
 lto = false
+debug = true
+debug-assertions = true
+overflow-checks = true
+panic = "unwind"
+incremental = true
+
+[profile.bench]
+opt-level = 3
+lto = "thin"
+debug = false
+debug-assertions = false
+overflow-checks = false
 incremental = true
 
 [profile.test]
-overflow-checks = true
 opt-level = 0
-debug = true
 lto = false
+debug = true
+debug-assertions = true
+overflow-checks = true
+panic = "unwind"
 incremental = true
+
