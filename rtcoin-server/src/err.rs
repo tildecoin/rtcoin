@@ -5,8 +5,6 @@
 
 use std::fmt;
 
-use log;
-
 // Used for quickly serializing an error into bytes
 // (or string) so that it may be sent across the socket.
 // Current error codes:

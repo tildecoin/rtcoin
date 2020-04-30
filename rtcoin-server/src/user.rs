@@ -6,7 +6,6 @@
 use std::fmt;
 
 use chrono::prelude::*;
-use log;
 use zeroize::Zeroize;
 
 use crate::db;

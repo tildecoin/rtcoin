@@ -5,8 +5,6 @@
 
 use std::{path::Path, sync::mpsc};
 
-use log;
-
 use rusqlite::{Connection, OpenFlags, NO_PARAMS};
 
 use zeroize::Zeroize;

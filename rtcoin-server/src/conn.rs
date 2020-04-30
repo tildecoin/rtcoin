@@ -10,8 +10,6 @@ use std::{
     sync::mpsc,
 };
 
-use log;
-
 use serde_json::Value;
 
 use crate::db;

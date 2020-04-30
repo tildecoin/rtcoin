@@ -9,7 +9,6 @@ use crate::db;
 use crate::db::Kind;
 use crate::err;
 
-use log;
 use serde_json::Value;
 
 // Deserializes a JSON Value struct into a db::Comm,

@@ -7,12 +7,6 @@
 
 use std::{error::Error, fs, os::unix::net::UnixListener, path::Path, process, sync::mpsc, thread};
 
-use ctrlc;
-
-use log;
-
-use num_cpus;
-use rpassword;
 use threadpool::ThreadPool;
 use zeroize::Zeroize;
 

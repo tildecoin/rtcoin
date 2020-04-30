@@ -3,8 +3,6 @@
 // See LICENSE file for detailed license information.
 //
 
-use log;
-use rusqlite;
 use rusqlite::NO_PARAMS;
 
 use crate::db;
