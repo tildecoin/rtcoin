@@ -1,12 +1,15 @@
 # rtcoin [![Build Status](https://travis-ci.com/tildecoin/rtcoin.svg?branch=master)](https://travis-ci.com/tildecoin/rtcoin) [![codecov](https://codecov.io/gh/tildecoin/rtcoin/branch/master/graph/badge.svg)](https://codecov.io/gh/tildecoin/rtcoin)
 
-`tildecoin` is a fun currency simulation concept originally written for the [tildeverse](https://tildeverse.org).
+`tildecoin` is a fun currency simulation concept being written for the [tildeverse](https://tildeverse.org).
 `rtcoin` is the second-generation implementation, meant to improve upon
 the first. The specifications set forth in the
 draft RFC for `tildecoin`, written by [~aewens](https://github.com/aewens), will be followed:
 * [tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md](https://tildegit.org/aewens/rfcs/src/branch/master/draft-tilde-coin.md)
 
-This project is in early development. 
+This project is in early development. Right now, I'm focusing on `rtcoin-server`. I'm going to
+be rewriting it fairly soon, after reexamining how I want to construct this. For example, instead
+of a threadpool, I'll be accepting connections asynchronously, and will be listening via TCP rather
+than via domain socket.
 
 ## Notes
 
