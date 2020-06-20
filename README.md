@@ -1,4 +1,4 @@
-# rtcoin [![Build Status](https://travis-ci.com/tildecoin/rtcoin.svg?branch=master)](https://travis-ci.com/tildecoin/rtcoin) [![codecov](https://codecov.io/gh/tildecoin/rtcoin/branch/master/graph/badge.svg)](https://codecov.io/gh/tildecoin/rtcoin)
+# rtcoin [![builds.sr.ht status](https://builds.sr.ht/~gbmor/rtcoin.svg)](https://builds.sr.ht/~gbmor/rtcoin?) [![Build Status](https://travis-ci.com/tildecoin/rtcoin.svg?branch=master)](https://travis-ci.com/tildecoin/rtcoin) [![codecov](https://codecov.io/gh/tildecoin/rtcoin/branch/master/graph/badge.svg)](https://codecov.io/gh/tildecoin/rtcoin)
 
 `tildecoin` is a fun currency simulation concept being written for the [tildeverse](https://tildeverse.org).
 `rtcoin` is the second-generation implementation, meant to improve upon
