@@ -1,0 +1,24 @@
+image: debian/testing
+packages:
+  - libcurl4-openssl-dev
+  - libelf-dev
+  - libdw-dev
+  - libsqlcipher-dev
+  - libsqlcipher0
+  - cmake
+  - curl
+  - gcc
+  - binutils-dev
+  - libiberty-dev
+sources:
+  - https://git.sr.ht/~gbmor/rtcoin
+environment:
+  PATH: "$HOME/.cargo/bin:$PATH"
+tasks:
+  - setup: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+      rustup install nightly
+      rustup default nightly
+  - build: |
+      cargo test
+      cargo build
