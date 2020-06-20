@@ -34,6 +34,11 @@ be what users interact with to display their balances, transfer `tildecoin` to o
 
 ## Updates
 
+**2020.06.20**
+
+Starting a major overhaul of the existing code very soon. Primary development will be happening at
+sourcehut instead of GitHub, though the repo will remain mirrored on GitHub.
+
 **2019.11.23**
 
 Minor changes to the dev plan.
