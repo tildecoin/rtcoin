@@ -13,12 +13,12 @@ packages:
 sources:
   - https://git.sr.ht/~gbmor/rtcoin
 environment:
-  PATH: "$HOME/.cargo/bin:$PATH"
+  PATH: "$HOME/.cargo/bin:/bin:/usr/bin:$PATH"
 tasks:
-  - setup: |
-      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-      rustup install nightly
-      rustup default nightly
-  - build: |
-      cargo test
-      cargo build
+  - setup: |-
+      curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
+      source $HOME/.cargo/env
+  - build: |-
+      cd $HOME/rtcoin
+      $HOME/.cargo/bin/cargo test
+      $HOME/.cargo/bin/cargo build
